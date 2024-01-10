@@ -24,6 +24,7 @@ sudo make install
 cd "$RAV1E_DIR/" || exit
 git pull
 rm -rf ffmpeg_build && mkdir ffmpeg_build || exit
+source "$HOME/.cargo/env" # for good measure
 cargo clean
 RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
      --prefix="$(pwd)"/ffmpeg_build \
@@ -42,3 +43,7 @@ make clean
 ./configure --enable-libsvtav1 --enable-librav1e
 make -j "$(nproc)"
 sudo make install
+
+hash -r
+source ~/.profile
+ffmpeg -encoders | grep "av1"
