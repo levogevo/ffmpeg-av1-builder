@@ -13,7 +13,8 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 # build svt-av1
 cd "$SVT_DIR/" || exit
 git pull
-mkdir build && cd build || exit
+mkdir build
+cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON
 make -j "$(nproc)"
