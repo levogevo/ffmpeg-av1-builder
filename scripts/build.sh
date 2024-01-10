@@ -14,6 +14,7 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 cd "$SVT_DIR/" || exit
 git pull
 mkdir build && cd build || exit
+make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON
 make -j "$(nproc)"
 sudo make install
@@ -22,6 +23,7 @@ sudo make install
 cd "$RAV1E_DIR/" || exit
 git pull
 rm -rf ffmpeg_build && mkdir ffmpeg_build || exit
+cargo clean
 RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
      --prefix="$(pwd)"/ffmpeg_build \
      --libdir="$(pwd)"/ffmpeg_build/lib \
@@ -35,6 +37,7 @@ sudo cp ./include/* /usr/local/include/ -r
 cd "$FFMPEG_DIR/" || exit
 export LD_LIBRARY_PATH+=":/usr/local/lib"
 export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
+make clean
 ./configure --enable-libsvtav1 --enable-librav1e
 make -j "$(nproc)"
 sudo make install
