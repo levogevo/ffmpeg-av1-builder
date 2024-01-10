@@ -13,10 +13,10 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 # build svt-av1
 cd "$SVT_DIR/" || exit
 git pull
-# rm -rf build && mkdir build && cd build || exit
-# cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON
-# make -j "$(nproc)"
-# sudo make install
+mkdir build && cd build || exit
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON
+make -j "$(nproc)"
+sudo make install
 
 # build rav1e
 cd "$RAV1E_DIR/" || exit
