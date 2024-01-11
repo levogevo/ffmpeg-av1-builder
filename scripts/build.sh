@@ -44,6 +44,9 @@ make clean
 make -j "$(nproc)"
 sudo make install
 
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
+sudo ldconfig
+
 hash -r
 source ~/.profile
 ffmpeg -encoders | grep "av1"
