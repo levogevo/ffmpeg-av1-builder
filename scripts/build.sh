@@ -6,9 +6,9 @@ RAV1E_DIR="$BASE_DIR/rav1e"
 FFMPEG_DIR="$BASE_DIR/ffmpeg"
 
 # clone
-git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
-git clone https://github.com/xiph/rav1e "$RAV1E_DIR"
-git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
+git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
+git clone https://github.com/xiph/rav1e "$RAV1E_DIR" --depth 1
+git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
