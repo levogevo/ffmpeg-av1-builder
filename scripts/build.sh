@@ -32,7 +32,6 @@ RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
      --prefix="$(pwd)"/ffmpeg_build \
      --libdir="$(pwd)"/ffmpeg_build/lib \
      --includedir="$(pwd)"/ffmpeg_build/include
-
 cd ffmpeg_build || exit
 sudo cp ./lib/* /usr/local/lib/ -r
 sudo cp ./include/* /usr/local/include/ -r
@@ -47,6 +46,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j "$(nproc)"
 sudo make install
 
+# ldconfig for shared libs
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
 sudo ldconfig
 
@@ -59,6 +59,7 @@ make clean
 make -j "$(nproc)"
 sudo make install
 
+# validate encoders
 hash -r
 source ~/.profile
 ffmpeg -encoders | grep "av1"
