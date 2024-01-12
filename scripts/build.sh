@@ -52,6 +52,7 @@ sudo ldconfig
 
 # build ffmpeg
 cd "$FFMPEG_DIR/" || exit
+git pull
 export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
 make clean
 ./configure --enable-libsvtav1 --enable-librav1e --enable-libaom
