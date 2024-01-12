@@ -4,11 +4,13 @@ BASE_DIR=$(pwd)
 SVT_DIR="$BASE_DIR/svt"
 RAV1E_DIR="$BASE_DIR/rav1e"
 FFMPEG_DIR="$BASE_DIR/ffmpeg"
+AOM_DIR="$BASE_DIR/aom"
 
 # clone
 git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
 git clone https://github.com/xiph/rav1e "$RAV1E_DIR" --depth 1
 git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
+git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
@@ -35,17 +37,26 @@ cd ffmpeg_build || exit
 sudo cp ./lib/* /usr/local/lib/ -r
 sudo cp ./include/* /usr/local/include/ -r
 
-# build ffmpeg
-cd "$FFMPEG_DIR/" || exit
-export LD_LIBRARY_PATH+=":/usr/local/lib"
-export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
+# build aom
+cd "$AOM_DIR/" || exit
+git pull
+mkdir build
+cd build || exit
 make clean
-./configure --enable-libsvtav1 --enable-librav1e
+cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j "$(nproc)"
 sudo make install
 
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
 sudo ldconfig
+
+# build ffmpeg
+cd "$FFMPEG_DIR/" || exit
+export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
+make clean
+./configure --enable-libsvtav1 --enable-librav1e --enable-libaom
+make -j "$(nproc)"
+sudo make install
 
 hash -r
 source ~/.profile
