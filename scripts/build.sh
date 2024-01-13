@@ -5,12 +5,14 @@ SVT_DIR="$BASE_DIR/svt"
 RAV1E_DIR="$BASE_DIR/rav1e"
 FFMPEG_DIR="$BASE_DIR/ffmpeg"
 AOM_DIR="$BASE_DIR/aom"
+VMAF_DIR="$BASE_DIR/vmaf"
 
 # clone
 git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
 git clone https://github.com/xiph/rav1e "$RAV1E_DIR" --depth 1
 git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
+git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
@@ -46,6 +48,16 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 make -j "$(nproc)"
 sudo make install
 
+# build libvmaf
+cd "$VMAF_DIR/libvmaf" || exit
+git pull
+python3 -m virtualenv .venv
+source .venv/bin/activate
+pip install meson
+meson setup build --buildtype release
+ninja -vC build
+sudo ninja -vC build install
+
 # ldconfig for shared libs
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
 sudo ldconfig
@@ -55,7 +67,8 @@ cd "$FFMPEG_DIR/" || exit
 git pull
 export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
 make clean
-./configure --enable-libsvtav1 --enable-librav1e --enable-libaom
+./configure --enable-libsvtav1 --enable-librav1e \
+     --enable-libaom --enable-libvmaf || exit
 make -j "$(nproc)"
 sudo make install
 

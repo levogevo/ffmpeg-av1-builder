@@ -18,9 +18,13 @@ test -f "$INPUT_DIR/${INPUT[2]}" || wget -O "$INPUT_DIR/${INPUT[2]}" 'https://ww
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
 
 # Different variables to test
-CRF=(25 30)
-ENCODER=('libaom-av1' 'libsvtav1' 'librav1e')
-PRESET=(4 8)
+CRF=(40)
+ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
+ENCODER=('libsvtav1')
+PRESET=(13)
+
+# Log for results
+LOG="$OUTPUT_DIR/results.txt"
 
 for input in "${INPUT[@]}"
 do
@@ -32,8 +36,13 @@ do
             for crf in "${CRF[@]}"
             do
                 OUTPUT="$OUTPUT_DIR/${encoder}_preset${preset}_crf${crf}_$input"
-                echo "output: $OUTPUT"
-                ffmpeg -i "$INPUT_DIR/$input" -c:a copy -c:v "$encoder" -preset "$preset" -crf "$crf" "$OUTPUT"
+                echo "output: $OUTPUT" >> "$LOG"
+                TIME_BEFORE=$(date +%s)
+                ffmpeg -i "$INPUT_DIR/$input" -c:a copy -c:v "$encoder" -preset "$preset" -crf "$crf" "$OUTPUT" 2> /dev/null || exit 1
+                TIME_AFTER=$(date +%s)
+                TIME_DIFF=$((TIME_AFTER - TIME_BEFORE))
+                echo -e "\t time taken: $TIME_DIFF" >> "$LOG"
+                ffmpeg -i "$OUTPUT" -i "$INPUT_DIR/$input" -lavfi libvmaf=n_threads="$(nproc)" -f 'null' - | grep "VMAF score:" >> "$LOG" || exit 1
             done
         done    
     done
