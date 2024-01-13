@@ -10,6 +10,7 @@ sudo apt-get install autoconf automake build-essential cmake git-core \
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 source "$HOME/.cargo/env"
-cargo install cargo-c
+cargo install cargo-c || exit 1
 
-python3 -m pip install virtualenv
+python3 -m pip install virtualenv || exit 1
+ 

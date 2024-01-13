@@ -54,7 +54,7 @@ git pull
 python3 -m virtualenv .venv
 source .venv/bin/activate
 pip install meson
-meson setup build --buildtype release
+meson setup build --buildtype release -Denable_float=true
 ninja -vC build
 sudo ninja -vC build install
 
