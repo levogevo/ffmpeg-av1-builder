@@ -25,7 +25,7 @@ do
     test -f "$DL_DIR/${INPUT[$index]}" || wget -O "$DL_DIR/${INPUT[$index]}" "${URL_DL[$index]}"
 done
 
-# Process only the middle 3 seconds of each video
+# Process only the middle CHUNK_TIME seconds of each video
 rm -rf "$INPUT_DIR"
 mkdir -p "$INPUT_DIR"
 CHUNK_TIME=2
