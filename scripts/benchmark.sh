@@ -11,12 +11,12 @@ INPUT[0]='waves_crashing.mp4'
 URL_DL[0]='https://www.pexels.com/download/video/1390942/?fps=23.98&h=2160&w=4096'
 INPUT[1]='burning_wood.mp4'
 URL_DL[1]='https://www.pexels.com/download/video/2908575/?fps=23.976&h=2160&w=4096'
-INPUT[2]='mountain_scenery.mp4'
-URL_DL[2]='https://www.pexels.com/download/video/5598970/?fps=23.976&h=2160&w=3840'
+INPUT[2]='gpac_chimera.mp4'
+URL_DL[2]='http://download.opencontent.netflix.com.s3.amazonaws.com/gpac/GPAC_Chimera_AVCMain_AACLC_10s.mp4'
 INPUT[3]='B_1.mp4'
 URL_DL[3]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/B_1.mp4'
-INPUT[4]='F_2.mp4'
-URL_DL[4]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/F_2.mp4'
+INPUT[4]='D_2.mp4'
+URL_DL[4]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/D_2.mp4'
 
 # download videos
 mkdir -p "$DL_DIR"
@@ -28,7 +28,7 @@ done
 # Process only the middle 3 seconds of each video
 rm -rf "$INPUT_DIR"
 mkdir -p "$INPUT_DIR"
-CHUNK_TIME=3
+CHUNK_TIME=2
 for input in "${INPUT[@]}"
 do
     TOTAL_DURATION=$(ffprobe -i "$DL_DIR/$input" -show_format 2> /dev/null | grep duration | cut -d '=' -f2)
@@ -46,9 +46,9 @@ ENCODER=('libsvtav1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-CRF=(30)
-ENCODER=('libsvtav1')
-PRESET=(13)
+# CRF=(30)
+# ENCODER=('libsvtav1')
+# PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
