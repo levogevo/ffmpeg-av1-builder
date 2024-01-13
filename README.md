@@ -2,9 +2,9 @@
 
 This repository is a simple collection of bash scripts that:
 
-1. Install required dependencies for all other scripts using `./scripts/install_deps.sh`
+1. Install required dependencies using `./scripts/install_deps.sh`
 2. Build and install ffmpeg from source using `./scripts/build.sh`
-3. Benchmark the different encoders against a set of open source videos using `./scripts/benchmark.sh`
+3. Benchmark the different encoders using `./scripts/benchmark.sh`
 
 AV1 encode quality is tested against 5 different open source videos using libsvtav1, librav1e, and libaom.
 Netflix's libvmaf is used to analyze quality of the encodes against the original files.
