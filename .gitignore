@@ -2,4 +2,5 @@ ffmpeg/
 rav1e/
 svt/
 aom/
+vmaf/
 benchmark/
