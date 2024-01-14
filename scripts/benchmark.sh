@@ -42,7 +42,6 @@ done
 # Different variables to test
 CRF=(20 25 30)
 ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
-ENCODER=('libsvtav1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
