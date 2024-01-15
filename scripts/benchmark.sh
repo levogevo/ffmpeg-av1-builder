@@ -53,6 +53,8 @@ PRESET=(13)
 LOG="$BENCHMARK_DIR/results.txt"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
 ffmpeg -version | grep "version" > "$LOG"
+CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
+echo "CPU product:$CPU_PROD with $(nproc) threads" >> $LOG
 uname -srmpio >> "$LOG"
 
 # Find versions of files
