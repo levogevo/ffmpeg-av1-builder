@@ -45,14 +45,25 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-# CRF=(30)
-# ENCODER=('libsvtav1')
-# PRESET=(13)
+CRF=(30)
+ENCODER=('libsvtav1')
+PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
-rm "$LOG"
+ffmpeg -version | grep "version" > "$LOG"
+uname -srmpio >> "$LOG"
+
+# Find versions of files
+cd /usr/local/lib || exit
+SVTAV1_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libSvtAv1Enc.so")")
+RAV1E_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "librav1e.so")")
+AOM_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libaom.so")")
+VMAF_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libvmaf.so")")
+cd "$BASE_DIR" || exit
+echo -e "$SVTAV1_VER \t $RAV1E_VER \t $AOM_VER \t $VMAF_VER" >> "$LOG"
+
 for input in "${INPUT[@]}"
 do
     for encoder in "${ENCODER[@]}"

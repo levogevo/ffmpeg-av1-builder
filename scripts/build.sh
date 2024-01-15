@@ -44,7 +44,7 @@ git pull
 mkdir build
 cd build || exit
 make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
 make -j "$(nproc)"
 sudo make install
 
