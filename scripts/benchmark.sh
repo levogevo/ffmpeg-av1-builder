@@ -45,17 +45,17 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-CRF=(30)
-ENCODER=('libsvtav1')
-PRESET=(13)
+# CRF=(30)
+# ENCODER=('libsvtav1')
+# PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
 ffmpeg -version | grep "version" > "$LOG"
+uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
 echo "CPU product:$CPU_PROD with $(nproc) threads" >> $LOG
-uname -srmpio >> "$LOG"
 
 # Find versions of files
 cd /usr/local/lib || exit
@@ -64,7 +64,7 @@ RAV1E_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "librav1e.so")")
 AOM_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libaom.so")")
 VMAF_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libvmaf.so")")
 cd "$BASE_DIR" || exit
-echo -e "$SVTAV1_VER \t $RAV1E_VER \t $AOM_VER \t $VMAF_VER" >> "$LOG"
+echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER" >> "$LOG"
 
 for input in "${INPUT[@]}"
 do
