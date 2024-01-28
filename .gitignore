@@ -1,6 +1,7 @@
-ffmpeg/
-rav1e/
-svt/
-aom/
-vmaf/
-benchmark/
+ffmpeg
+rav1e
+svt
+aom
+vmaf
+dav1d
+benchmark

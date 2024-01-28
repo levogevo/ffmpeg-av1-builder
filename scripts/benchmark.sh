@@ -63,8 +63,9 @@ SVTAV1_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libSvtAv1Enc.so")"
 RAV1E_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "librav1e.so")")
 AOM_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libaom.so")")
 VMAF_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libvmaf.so")")
+DAV1D_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libdav1d.so")")
 cd "$BASE_DIR" || exit
-echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER" >> "$LOG"
+echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER $DAV1D_VER" >> "$LOG"
 
 for input in "${INPUT[@]}"
 do

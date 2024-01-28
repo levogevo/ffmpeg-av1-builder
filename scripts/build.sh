@@ -6,6 +6,7 @@ RAV1E_DIR="$BASE_DIR/rav1e"
 FFMPEG_DIR="$BASE_DIR/ffmpeg"
 AOM_DIR="$BASE_DIR/aom"
 VMAF_DIR="$BASE_DIR/vmaf"
+DAV1D_DIR="$BASE_DIR/dav1d"
 
 # clone
 git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
@@ -13,16 +14,18 @@ git clone https://github.com/xiph/rav1e "$RAV1E_DIR" --depth 1
 git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
 git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
+git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
 git pull
+rm -rf build
 mkdir build
 cd build || exit
 make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON
-make -j "$(nproc)"
-sudo make install
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
 
 # build rav1e
 cd "$RAV1E_DIR/" || exit
@@ -33,20 +36,19 @@ cargo clean
 RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
      --prefix="$(pwd)"/ffmpeg_build \
      --libdir="$(pwd)"/ffmpeg_build/lib \
-     --includedir="$(pwd)"/ffmpeg_build/include
+     --includedir="$(pwd)"/ffmpeg_build/include || exit
 cd ffmpeg_build || exit
-sudo cp ./lib/* /usr/local/lib/ -r
-sudo cp ./include/* /usr/local/include/ -r
+sudo cp ./lib/* /usr/local/lib/ -r || exit
+sudo cp ./include/* /usr/local/include/ -r || exit
 
 # build aom
 cd "$AOM_DIR/" || exit
 git pull
 mkdir build
 cd build || exit
-make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
-make -j "$(nproc)"
-sudo make install
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
 
 # build libvmaf
 cd "$VMAF_DIR/libvmaf" || exit
@@ -54,9 +56,19 @@ git pull
 python3 -m virtualenv .venv
 source .venv/bin/activate
 pip install meson
-meson setup build --buildtype release -Denable_float=true
-ninja -vC build
-sudo ninja -vC build install
+meson setup build --buildtype release -Denable_float=true || exit
+ninja -vC build || exit
+sudo ninja -vC build install || exit
+
+# build dav1d
+cd "$DAV1D_DIR" || exit
+git pull
+rm -rf build
+mkdir build
+cd build || exit
+meson setup ../ build --buildtype release  || exit
+ninja -vC build || exit
+sudo ninja -vC build install || exit
 
 # ldconfig for shared libs
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
@@ -68,9 +80,9 @@ git pull
 export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
 make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
-     --enable-libaom --enable-libvmaf || exit
-make -j "$(nproc)"
-sudo make install
+     --enable-libaom --enable-libvmaf --enable-libdav1d || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
 
 # validate encoders
 hash -r
