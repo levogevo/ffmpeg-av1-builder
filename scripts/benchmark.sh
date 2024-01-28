@@ -45,9 +45,9 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-# CRF=(30)
-# ENCODER=('libsvtav1')
-# PRESET=(13)
+CRF=(30)
+ENCODER=('libsvtav1')
+PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
@@ -86,6 +86,7 @@ do
                 TIME_AFTER=$(date +%s)
                 TIME_DIFF=$((TIME_AFTER - TIME_BEFORE))
                 echo -e "\ttime taken: $TIME_DIFF seconds" >> "$LOG"
+                echo -e "\tsize: $(du -h "$OUTPUT" | cut -f1)" >> "$LOG"
 
                 # vmaf
                 VMAF_RESULTS="${OUTPUT}_vmaf.json"
