@@ -7,6 +7,7 @@ FFMPEG_DIR="$BASE_DIR/ffmpeg"
 AOM_DIR="$BASE_DIR/aom"
 VMAF_DIR="$BASE_DIR/vmaf"
 DAV1D_DIR="$BASE_DIR/dav1d"
+OPUS_DIR="$BASE_DIR/opus"
 
 # clone
 git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
@@ -15,6 +16,7 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
 git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
+git clone git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
@@ -70,6 +72,14 @@ meson setup ../ build --buildtype release  || exit
 ninja -vC build || exit
 sudo ninja -vC build install || exit
 
+# build opus
+cd "$OPUS_DIR" || exit
+git pull
+./autogen.sh || exit
+./configure || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
+
 # ldconfig for shared libs
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
 sudo ldconfig
@@ -80,7 +90,8 @@ git pull
 export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
 make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
-     --enable-libaom --enable-libvmaf --enable-libdav1d || exit
+     --enable-libaom --enable-libvmaf \
+     --enable-libdav1d --enable-libopus || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
