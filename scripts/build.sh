@@ -16,7 +16,7 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
 git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
-git clone git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
+git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
