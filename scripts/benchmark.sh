@@ -46,7 +46,7 @@ PRESET=(4 8 12)
 
 # uncomment for quick testing
 # CRF=(30)
-ENCODER=('libsvtav1')
+# ENCODER=('libsvtav1')
 # PRESET=(13)
 
 # Log for results
