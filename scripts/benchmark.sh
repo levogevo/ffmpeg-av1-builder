@@ -8,7 +8,7 @@ OUTPUT_DIR="$BENCHMARK_DIR/output"
 
 # input names and respective URLs
 INPUT[0]='waves_crashing.mp4'
-URL_DL[0]='https://www.pexels.com/download/video/1390942/?fps=23.98&h=2160&w=4096'
+URL_DL[0]='https://www.pexels.com/download/video/5036917/?fps=29.97&h=2160&w=3840'
 INPUT[1]='burning_wood.mp4'
 URL_DL[1]='https://www.pexels.com/download/video/2908575/?fps=23.976&h=2160&w=4096'
 INPUT[2]='gpac_chimera.mp4'
@@ -45,14 +45,16 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-# CRF=(30)
-# ENCODER=('libsvtav1')
-# PRESET=(13)
+CRF=(30)
+ENCODER=('libsvtav1')
+PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
+CSV="$BENCHMARK_DIR/results.csv"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
 ffmpeg -version | grep "version" > "$LOG"
+echo "ENCODER,PRESET,CRF,INPUT,TIME_TAKEN,SIZE,PSNR_HVS,CAMBI,FLOAT_MS_SSIM,VMAF" > "$CSV"
 uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
 echo "CPU product:$CPU_PROD with $(nproc) threads" >> $LOG
@@ -87,6 +89,7 @@ do
                 TIME_DIFF=$((TIME_AFTER - TIME_BEFORE))
                 echo -e "\ttime taken: $TIME_DIFF seconds" >> "$LOG"
                 echo -e "\tsize: $(du -h "$OUTPUT" | cut -f1)" >> "$LOG"
+                CSV_LINE="${encoder},${preset},${crf},${input},${TIME_DIFF},$(du "$OUTPUT" | cut -f1)"                
 
                 # vmaf
                 VMAF_RESULTS="${OUTPUT}_vmaf.json"
@@ -94,9 +97,18 @@ do
                     libvmaf='feature=name=psnr_hvs|name=cambi|name=float_ms_ssim':n_threads="$(nproc)":log_path="$VMAF_RESULTS":log_fmt='json' \
                     -f 'null' - || exit 1
                 echo -e "\tpsnr_hvs: $(cat "$VMAF_RESULTS" | jq '.pooled_metrics.psnr_hvs.harmonic_mean')" >> "$LOG" || exit 1
+                CSV_LINE="${CSV_LINE},$(cat "$VMAF_RESULTS" | jq '.pooled_metrics.psnr_hvs.harmonic_mean')"
+
                 echo -e "\tcambi: $(cat "$VMAF_RESULTS" | jq '.pooled_metrics.cambi.harmonic_mean')" >> "$LOG" || exit 1
+                CSV_LINE="${CSV_LINE},$(cat "$VMAF_RESULTS" | jq '.pooled_metrics.cambi.harmonic_mean')"
+
                 echo -e "\tfloat_ms_ssim: $(cat "$VMAF_RESULTS" | jq '.pooled_metrics.float_ms_ssim.harmonic_mean')" >> "$LOG" || exit 1
+                CSV_LINE="${CSV_LINE},$(cat "$VMAF_RESULTS" | jq '.pooled_metrics.float_ms_ssim.harmonic_mean')"
+
                 echo -e "\tvmaf: $(cat "$VMAF_RESULTS" | jq '.pooled_metrics.vmaf.harmonic_mean')" >> "$LOG" || exit 1
+                CSV_LINE="${CSV_LINE},$(cat "$VMAF_RESULTS" | jq '.pooled_metrics.vmaf.harmonic_mean')"
+                echo "$CSV_LINE" >> "$CSV"
+
             done
         done    
     done
