@@ -9,8 +9,8 @@ OUTPUT_DIR="$BENCHMARK_DIR/output"
 # input names and respective URLs
 INPUT[0]='water_shimmer.mp4'
 URL_DL[0]='https://www.pexels.com/download/video/2915051/?fps=25.0&h=2160&w=3840'
-INPUT[1]='burning_wood.mp4'
-URL_DL[1]='https://www.pexels.com/download/video/2908575/?fps=23.976&h=2160&w=4096'
+INPUT[1]='carnival_ride.mp4'
+URL_DL[1]='https://www.pexels.com/download/video/19026924/?fps=25.0&h=2160&w=4096'
 INPUT[2]='gpac_chimera.mp4'
 URL_DL[2]='http://download.opencontent.netflix.com.s3.amazonaws.com/gpac/GPAC_Chimera_AVCMain_AACLC_10s.mp4'
 INPUT[3]='B_1.mp4'
