@@ -7,8 +7,8 @@ INPUT_DIR="$BENCHMARK_DIR/input"
 OUTPUT_DIR="$BENCHMARK_DIR/output"
 
 # input names and respective URLs
-INPUT[0]='waves_crashing.mp4'
-URL_DL[0]='https://www.pexels.com/download/video/5036917/?fps=29.97&h=2160&w=3840'
+INPUT[0]='water_shimmer.mp4'
+URL_DL[0]='https://www.pexels.com/download/video/2915051/?fps=25.0&h=2160&w=3840'
 INPUT[1]='burning_wood.mp4'
 URL_DL[1]='https://www.pexels.com/download/video/2908575/?fps=23.976&h=2160&w=4096'
 INPUT[2]='gpac_chimera.mp4'
@@ -45,9 +45,9 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-CRF=(30)
-ENCODER=('libsvtav1')
-PRESET=(13)
+# CRF=(30)
+# ENCODER=('libsvtav1')
+# PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
