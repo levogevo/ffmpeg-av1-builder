@@ -25,7 +25,8 @@ rm -rf build
 mkdir build
 cd build || exit
 make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON || exit
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON -DNATIVE=ON \
+          -DCMAKE_C_FLAGS="-flto -O3 -mcpu=native" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -48,7 +49,8 @@ cd "$AOM_DIR/" || exit
 git pull
 mkdir build
 cd build || exit
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON || exit
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON\
+          -DCMAKE_C_FLAGS="-flto -O3 -mcpu=native" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -91,7 +93,9 @@ export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
 make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
-     --enable-libdav1d --enable-libopus || exit
+     --enable-libdav1d --enable-libopus \
+     --extra-cflags="-mcpu=native" \
+     --extra-cxxflags="-mcpu=native" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
