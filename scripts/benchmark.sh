@@ -35,8 +35,8 @@ do
     echo "$TOTAL_DURATION"
     IN_POINT=$(echo "print(($TOTAL_DURATION - $CHUNK_TIME) / 2)" | python3)
     echo -e "\tin: $IN_POINT"
-    ffmpeg -i "$DL_DIR/$input" -vcodec copy -reset_timestamps 1 \
-        -map 0 -an -sn -ss "$IN_POINT" -t $CHUNK_TIME "$INPUT_DIR/$input"
+    ffmpeg -ss "$IN_POINT" -i "$DL_DIR/$input" -vcodec copy -reset_timestamps 1 \
+        -map 0 -an -sn  -t $CHUNK_TIME "$INPUT_DIR/$input"
 done
 
 # Different variables to test
@@ -45,9 +45,9 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-CRF=(30)
+CRF=(25)
 ENCODER=('libsvtav1')
-PRESET=(13)
+PRESET=(8)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
