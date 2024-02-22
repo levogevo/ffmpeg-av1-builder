@@ -37,7 +37,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DCMAKE_C_FLAGS="-O2 $EXTRA_C_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-O3 $EXTRA_C_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -62,7 +62,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-          -DCMAKE_C_FLAGS="-flto -O2 $EXTRA_C_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-flto -O3 $EXTRA_C_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
