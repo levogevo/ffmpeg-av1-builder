@@ -47,7 +47,7 @@ PRESET=(4 8 12)
 # uncomment for quick testing
 CRF=(25)
 ENCODER=('libsvtav1')
-PRESET=(8)
+PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
@@ -82,11 +82,11 @@ do
                 echo "output: $(basename "$OUTPUT")" >> "$LOG"
 
                 # encode
-                TIME_BEFORE=$(date +%s)
-                ffmpeg -i "$INPUT_DIR/$input" -c:a copy -c:v "$encoder" \
-                    -preset "$preset" -crf "$crf" "$OUTPUT" 2> /dev/null || exit 1
-                TIME_AFTER=$(date +%s)
-                TIME_DIFF=$((TIME_AFTER - TIME_BEFORE))
+                export TIMEFORMAT=%R
+                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -c:a copy -c:v $encoder -preset $preset -crf $crf $OUTPUT"
+                (time $FFMPEG_CMD) |& tee TIME
+                TIME_DIFF="$(cat TIME | tail -n 1)"
+                rm TIME
                 echo -e "\ttime taken: $TIME_DIFF seconds" >> "$LOG"
                 echo -e "\tsize: $(du -h "$OUTPUT" | cut -f1)" >> "$LOG"
                 CSV_LINE="${encoder},${preset},${crf},${input},${TIME_DIFF},$(du "$OUTPUT" | cut -f1)"                
