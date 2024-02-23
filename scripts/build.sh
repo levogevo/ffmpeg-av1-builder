@@ -18,16 +18,7 @@ git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
 git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
 
-ARCH=$(arch)
-EXTRA_C_FLAGS=""
-if [[ "$ARCH" == "x86_64" ]]
-then
-  EXTRA_C_FLAGS="-march=native -mtune=native"
-elif [[ "$ARCH" == "aarch64" ]]
-then
-  EXTRA_C_FLAGS="-mcpu=native"
-fi
-echo "EXTRA_C_FLAGS: $EXTRA_C_FLAGS"
+export PATH="/usr/lib/ccache/:$PATH"
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
@@ -37,7 +28,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DCMAKE_C_FLAGS="-O3 $EXTRA_C_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-O3" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -62,7 +53,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-          -DCMAKE_C_FLAGS="-flto -O3 $EXTRA_C_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-flto -O3" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -106,8 +97,10 @@ make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
-     --extra-cflags="$EXTRA_C_FLAGS" \
-     --extra-cxxflags="$EXTRA_C_FLAGS" || exit
+     --extra-cflags="-O3" \
+     --extra-cxxflags="-O3" \
+     --disable-doc --disable-htmlpages \
+     --disable-podpages --disable-txtpages || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
