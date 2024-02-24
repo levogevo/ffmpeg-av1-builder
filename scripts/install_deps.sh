@@ -3,6 +3,7 @@
 PKG_MNG="apt-get"
 
 sudo "$PKG_MNG" update
+sudo "$PKG_MNG" upgrade -qy
 
 sudo "$PKG_MNG" install autoconf automake build-essential cmake git-core \
   libass-dev libfreetype6-dev libsdl2-dev libtool libva-dev libvdpau-dev \
@@ -14,6 +15,8 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 source "$HOME/.cargo/env"
 cargo install cargo-c || exit 1
 
+grep -q '\[global\]' /etc/pip.conf 2> /dev/null || printf '%b' '[global]\n' | sudo tee -a /etc/pip.conf > /dev/null
+sudo sed -i '/^\[global\]/a\break-system-packages=true' /etc/pip.conf
 pip install --upgrade pip
-python3 -m pip install virtualenv || exit 1
+python3 -m pip install --upgrade virtualenv || exit 1
  
