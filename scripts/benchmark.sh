@@ -45,9 +45,9 @@ ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
 PRESET=(4 8 12)
 
 # uncomment for quick testing
-CRF=(25)
-ENCODER=('libsvtav1')
-PRESET=(13)
+# CRF=(25)
+# ENCODER=('libsvtav1')
+# PRESET=(13)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
