@@ -23,8 +23,6 @@ export COMP_FLAGS=""
 if [[ "$ARCH" == "x86_64" ]]
 then
   COMP_FLAGS="-march=native"
-elif [[ "$ARCH" == "riscv64" ]]
-  COMP_FLAGS="-march=rv64"
 fi
 echo "COMP_FLAGS: $COMP_FLAGS"
 
