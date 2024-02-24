@@ -99,6 +99,7 @@ export CFLAGS="-O3 -flto $COMP_FLAGS"
 ./configure || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
+unset CFLAGS
 
 # ldconfig for shared libs
 echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
