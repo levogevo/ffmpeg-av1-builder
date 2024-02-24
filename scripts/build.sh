@@ -20,9 +20,11 @@ git clone https://github.com/xiph/opus.git "$OPUS_DIR" --depth 1
 
 export ARCH=$(arch)
 export COMP_FLAGS=""
-if [[ "$ARCH" ]]
+if [[ "$ARCH" == "x86_64" ]]
 then
   COMP_FLAGS="-march=native"
+elif [[ "$ARCH" == "riscv64" ]]
+  COMP_FLAGS="-march=rv64"
 fi
 echo "COMP_FLAGS: $COMP_FLAGS"
 
