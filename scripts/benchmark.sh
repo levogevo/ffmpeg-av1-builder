@@ -101,8 +101,8 @@ do
                     PARAMS="-cpu-used $preset -row-mt 1 -threads $THREADS -crf $crf"
                 elif [[ "$encoder" == "libsvtav1" ]]
                 then
-                    PARAMS="-preset $preset -crf $crf -sc_detection true \
-                                -svtav1-params tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
+                    PARAMS="-preset $preset -crf $crf -svtav1-params \
+                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
                 else
                     PARAMS=""
                 fi
