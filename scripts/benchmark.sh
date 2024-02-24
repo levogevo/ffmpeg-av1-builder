@@ -39,15 +39,19 @@ do
         -map 0 -an -sn  -t $CHUNK_TIME "$INPUT_DIR/$input"
 done
 
+THREADS="$(nproc)"
+
 # Different variables to test
 CRF=(20 25 30)
 ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
-PRESET=(4 8 12)
+PRESET=(2 4 6 8)
 
 # uncomment for quick testing
 # CRF=(25)
 # ENCODER=('libsvtav1')
-# PRESET=(13)
+# ENCODER=('librav1e')
+# ENCODER=('libaom-av1')
+# PRESET=(8)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
@@ -57,7 +61,7 @@ ffmpeg -version | grep "version" > "$LOG"
 echo "ENCODER,PRESET,CRF,INPUT,TIME_TAKEN,SIZE,PSNR_HVS,CAMBI,FLOAT_MS_SSIM,VMAF" > "$CSV"
 uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
-echo "CPU product:$CPU_PROD with $(nproc) threads" >> $LOG
+echo "CPU product:$CPU_PROD with $THREADS threads" >> $LOG
 
 # Find versions of files
 cd /usr/local/lib || exit
@@ -68,6 +72,9 @@ VMAF_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libvmaf.so")")
 DAV1D_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libdav1d.so")")
 cd "$BASE_DIR" || exit
 echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER $DAV1D_VER" >> "$LOG"
+
+power2() { echo "x=l($1)/l(2); scale=0; 2^((x+0.5)/1)" | bc -l; }
+TILES=$(power2 "$THREADS")
 
 for input in "${INPUT[@]}"
 do
@@ -81,9 +88,28 @@ do
                 OUTPUT="$OUTPUT_DIR/${encoder}_preset${preset}_crf${crf}_$input"
                 echo "output: $(basename "$OUTPUT")" >> "$LOG"
 
+                # lib specific params
+                PARAMS=""
+                if [[ "$encoder" == "librav1e" ]]
+                then
+                    test "$crf" -eq 20 && quantizer=50
+                    test "$crf" -eq 25 && quantizer=100
+                    test "$crf" -eq 30 && quantizer=150
+                    PARAMS="-speed $preset -rav1e-params tiles=$TILES:threads=$THREADS:quantizer=$quantizer"
+                elif [[ "$encoder" == "libaom-av1" ]]
+                then
+                    PARAMS="-cpu-used $preset -row-mt 1 -threads $THREADS -crf $crf"
+                elif [[ "$encoder" == "libsvtav1" ]]
+                then
+                    PARAMS="-preset $preset -crf $crf -sc_detection true \
+                                -svtav1-params tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
+                else
+                    PARAMS=""
+                fi
+
                 # encode
                 export TIMEFORMAT=%R
-                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -c:a copy -c:v $encoder -preset $preset -crf $crf $OUTPUT"
+                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -c:a copy -c:v $encoder $PARAMS -pix_fmt yuv420p10le $OUTPUT"
                 (time $FFMPEG_CMD) |& tee TIME
                 TIME_DIFF="$(cat TIME | tail -n 1)"
                 rm TIME
