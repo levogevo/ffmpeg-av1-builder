@@ -16,7 +16,7 @@ git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
 git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
 git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
-git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
+git clone https://github.com/xiph/opus.git "$OPUS_DIR" --depth 1
 
 export ARCH=$(arch)
 export COMP_FLAGS=""
@@ -71,8 +71,12 @@ cd "$VMAF_DIR/libvmaf" || exit
 git pull
 python3 -m virtualenv .venv
 source .venv/bin/activate
+rm -rf build
+mkdir build
+cd build || exit
 pip install meson
-meson setup build --buildtype release -Denable_float=true || exit
+meson setup ../ build --buildtype release -Denable_float=true -Db_lto=true \
+     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build || exit
 sudo ninja -vC build install || exit
 
@@ -82,7 +86,8 @@ git pull
 rm -rf build
 mkdir build
 cd build || exit
-meson setup ../ build --buildtype release  || exit
+meson setup ../ build --buildtype release -Db_lto=true \
+     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build || exit
 sudo ninja -vC build install || exit
 
@@ -90,6 +95,7 @@ sudo ninja -vC build install || exit
 cd "$OPUS_DIR" || exit
 git pull
 ./autogen.sh || exit
+export CFLAGS="-O3 -flto $COMP_FLAGS"
 ./configure || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
