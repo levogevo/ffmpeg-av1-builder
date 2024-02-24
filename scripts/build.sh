@@ -115,7 +115,6 @@ make clean
      --enable-libdav1d --enable-libopus \
      --arch="$ARCH" --cpu=native \
      --enable-lto \
-     --pkg-config-flags="--static" \
      --extra-cflags="-O3 $COMP_FLAGS" \
      --extra-cxxflags="-O3 $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
