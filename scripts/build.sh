@@ -18,6 +18,15 @@ git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
 git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
 git clone https://gitlab.xiph.org/xiph/opus.git "$OPUS_DIR" --depth 1
 
+export ARCH=$(arch)
+export COMP_FLAGS=""
+if [[ "$ARCH" ]]
+then
+  COMP_FLAGS="-march=native"
+fi
+echo "COMP_FLAGS: $COMP_FLAGS"
+
+# for ccache
 export PATH="/usr/lib/ccache/:$PATH"
 
 # build svt-av1
@@ -28,7 +37,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DCMAKE_C_FLAGS="-O3" || exit
+          -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -53,7 +62,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-          -DCMAKE_C_FLAGS="-flto -O3" || exit
+          -DCMAKE_C_FLAGS="-flto -O3 $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -97,8 +106,11 @@ make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
-     --extra-cflags="-O3" \
-     --extra-cxxflags="-O3" \
+     --arch="$ARCH" --cpu=native \
+     --enable-lto \
+     --pkg-config-flags="--static" \
+     --extra-cflags="-O3 $COMP_FLAGS" \
+     --extra-cxxflags="-O3 $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
      --disable-podpages --disable-txtpages || exit
 make -j "$(nproc)" || exit

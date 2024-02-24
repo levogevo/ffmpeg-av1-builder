@@ -14,5 +14,6 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 source "$HOME/.cargo/env"
 cargo install cargo-c || exit 1
 
+pip install --upgrade pip
 python3 -m pip install virtualenv || exit 1
  
