@@ -113,3 +113,6 @@ do
         done    
     done
 done
+
+echo -e "\n\n--- Results CSV ---\n" >> "$LOG"
+cat "$CSV" >> "$LOG"
