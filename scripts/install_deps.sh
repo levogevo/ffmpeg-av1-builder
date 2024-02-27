@@ -15,6 +15,7 @@ curl https://sh.rustup.rs -sSf | sh -s -- -y
 source "$HOME/.cargo/env"
 cargo install cargo-c || exit 1
 
+sudo rm /etc/pip.conf
 grep -q '\[global\]' /etc/pip.conf 2> /dev/null || printf '%b' '[global]\n' | sudo tee -a /etc/pip.conf > /dev/null
 sudo sed -i '/^\[global\]/a\break-system-packages=true' /etc/pip.conf
 pip install --upgrade pip
