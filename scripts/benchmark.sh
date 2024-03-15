@@ -2,41 +2,33 @@
 
 BASE_DIR=$(pwd)
 BENCHMARK_DIR="$BASE_DIR/benchmark"
-DL_DIR="$BENCHMARK_DIR/downloads"
 INPUT_DIR="$BENCHMARK_DIR/input"
 OUTPUT_DIR="$BENCHMARK_DIR/output"
 
 # input names and respective URLs
-INPUT[0]='cosmos_laundromat.mp4'
-URL_DL[0]='http://download.opencontent.netflix.com.s3.amazonaws.com/CosmosLaundromat/CosmosLaundromat_2k24p_HDR_P3PQ.mp4'
-INPUT[1]='carnival_ride.mp4'
-URL_DL[1]='https://www.pexels.com/download/video/19026924/?fps=25.0&h=2160&w=4096'
-INPUT[2]='gpac_chimera.mp4'
-URL_DL[2]='http://download.opencontent.netflix.com.s3.amazonaws.com/gpac/GPAC_Chimera_AVCMain_AACLC_10s.mp4'
-INPUT[3]='B_1.mp4'
-URL_DL[3]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/B_1.mp4'
-INPUT[4]='D_2.mp4'
-URL_DL[4]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/D_2.mp4'
+INPUT[0]='Chimera.mkv'
+URL_DL[0]='http://download.opencontent.netflix.com.s3.amazonaws.com/Chimera/Chimera_DCI4k5994p_HDR_P3PQ.mp4'
+INPUT[1]='SolLevante.mov'
+URL_DL[1]='http://download.opencontent.netflix.com.s3.amazonaws.com/SolLevante/hdr10/SolLevante_HDR10_r2020_ST2084_UHD_24fps_1000nit.mov'
+INPUT[2]='CosmosLaundromat.mp4'
+URL_DL[2]='http://download.opencontent.netflix.com.s3.amazonaws.com/CosmosLaundromat/CosmosLaundromat_2k24p_HDR_P3PQ.mp4'
+INPUT[3]='SPARKS.mkv'
+URL_DL[3]='http://download.opencontent.netflix.com.s3.amazonaws.com/sparks-mxf-tracks/20161103_1023_SPARKS_4K_P3_PQ_4000nits_DoVi.mxf'
+INPUT[4]='Meridian.mkv'
+URL_DL[4]='http://download.opencontent.netflix.com.s3.amazonaws.com/Meridian/Meridian_UHD4k5994_HDR_P3PQ.mp4'
 
-# download videos
-mkdir -p "$DL_DIR"
-for index in "${!INPUT[@]}"
-do
-    test -f "$DL_DIR/${INPUT[$index]}" || wget -O "$DL_DIR/${INPUT[$index]}" "${URL_DL[$index]}"
-done
-
-# Process only the middle CHUNK_TIME seconds of each video
-rm -rf "$INPUT_DIR"
+# download videos into input directory
 mkdir -p "$INPUT_DIR"
 CHUNK_TIME=2
-for input in "${INPUT[@]}"
+for index in "${!INPUT[@]}"
 do
-    TOTAL_DURATION=$(ffprobe -i "$DL_DIR/$input" -show_format 2> /dev/null | grep duration | cut -d '=' -f2)
+    test -f "$INPUT_DIR/${INPUT[$index]}" && continue
+    TOTAL_DURATION=$(ffprobe -i "${URL_DL[$index]}" -show_format 2> /dev/null | grep duration | cut -d '=' -f2)
     echo "$TOTAL_DURATION"
     IN_POINT=$(echo "print(($TOTAL_DURATION - $CHUNK_TIME) / 2)" | python3)
     echo -e "\tin: $IN_POINT"
-    ffmpeg -ss "$IN_POINT" -i "$DL_DIR/$input" -vcodec copy -reset_timestamps 1 \
-        -map 0 -an -sn  -t $CHUNK_TIME "$INPUT_DIR/$input"
+    ffmpeg -ss "$IN_POINT" -i "${URL_DL[$index]}" -vcodec copy -reset_timestamps 1 \
+        -map 0 -an -sn  -t $CHUNK_TIME "$INPUT_DIR/${INPUT[$index]}" || exit 1
 done
 
 THREADS="$(nproc)"
