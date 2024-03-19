@@ -12,13 +12,12 @@ RKMPP_DIR="$BASE_DIR/rkmpp"
 RKRGA_DIR="$BASE_DIR/rkrga"
 
 # clone
-git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
-git clone https://github.com/xiph/rav1e "$RAV1E_DIR" --depth 1
-git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1
-git clone https://aomedia.googlesource.com/aom "$AOM_DIR" --depth 1
-git clone https://github.com/Netflix/vmaf "$VMAF_DIR" --depth 1
-git clone https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" --depth 1
-git clone https://github.com/xiph/opus.git "$OPUS_DIR" --depth 1
+git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
+git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
+git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
+git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
 
 export ARCH=$(arch)
 export COMP_FLAGS=""
@@ -39,8 +38,10 @@ FFMPEG_ROCKCHIP=""
 IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$IS_ROCKCHIP" == "yes" ]]
 then
-  FFMPEG_ROCKCHIP=" --enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+  FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
 
+  # clone rockchip specific repos
+  git clone --depth 1 https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
   git clone -b jellyfin-mpp --depth=1 https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
   git clone -b jellyfin-rga --depth=1 https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
 
@@ -70,6 +71,8 @@ then
      --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
   ninja -vC rga_build || exit
   sudo ninja -vC rga_build install || exit
+else
+  git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1  
 fi
 
 # build svt-av1
@@ -159,7 +162,7 @@ make clean
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
      --arch="$ARCH" --cpu=native \
-     --enable-lto"$FFMPEG_ROCKCHIP" \
+     --enable-lto $FFMPEG_ROCKCHIP \
      --extra-cflags="-O3 $COMP_FLAGS" \
      --extra-cxxflags="-O3 $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
