@@ -39,7 +39,7 @@ FFMPEG_ROCKCHIP=""
 IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$IS_ROCKCHIP" == "yes" ]]
 then
-  FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+  FFMPEG_ROCKCHIP=" --enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
 
   git clone -b jellyfin-mpp --depth=1 https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
   git clone -b jellyfin-rga --depth=1 https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
@@ -159,7 +159,7 @@ make clean
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
      --arch="$ARCH" --cpu=native \
-     --enable-lto "$FFMPEG_ROCKCHIP" \
+     --enable-lto"$FFMPEG_ROCKCHIP" \
      --extra-cflags="-O3 $COMP_FLAGS" \
      --extra-cxxflags="-O3 $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
