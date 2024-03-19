@@ -8,6 +8,8 @@ AOM_DIR="$BASE_DIR/aom"
 VMAF_DIR="$BASE_DIR/vmaf"
 DAV1D_DIR="$BASE_DIR/dav1d"
 OPUS_DIR="$BASE_DIR/opus"
+RKMPP_DIR="$BASE_DIR/rkmpp"
+RKRGA_DIR="$BASE_DIR/rkrga"
 
 # clone
 git clone https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" --depth 1
@@ -31,6 +33,44 @@ echo "COMP_FLAGS: $COMP_FLAGS"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
+
+# rockchip ffmpeg libs
+FFMPEG_ROCKCHIP=""
+IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
+if [[ "$IS_ROCKCHIP" == "yes" ]]
+then
+  FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+
+  git clone -b jellyfin-mpp --depth=1 https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+  git clone -b jellyfin-rga --depth=1 https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+
+  # build mpp
+  cd "$RKMPP_DIR/" || exit
+  git pull
+  rm -rf mpp_build
+  mkdir mpp_build
+  cd mpp_build || exit
+  make clean
+  cmake .. -DCMAKE_BUILD_TYPE=Release \
+           -DBUILD_SHARED_LIBS=ON \
+           -DBUILD_TEST=OFF \
+           -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
+           -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+  make -j "$(nproc)" || exit
+  sudo make install || exit
+
+  # build rga
+  cd "$RKRGA_DIR" || exit
+  git pull
+  rm -rf rga_build
+  mkdir rga_build
+  cd rga_build || exit
+  meson setup ../ rga_build --buildtype release -Db_lto=true \
+     --default-library=shared -Dlibdrm=false -Dlibrga_demo=false \
+     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
+  ninja -vC rga_build || exit
+  sudo ninja -vC rga_build install || exit
+fi
 
 # build svt-av1
 cd "$SVT_DIR/" || exit
@@ -119,7 +159,7 @@ make clean
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
      --arch="$ARCH" --cpu=native \
-     --enable-lto \
+     --enable-lto "$FFMPEG_ROCKCHIP" \
      --extra-cflags="-O3 $COMP_FLAGS" \
      --extra-cxxflags="-O3 $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
