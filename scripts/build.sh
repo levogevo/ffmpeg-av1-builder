@@ -19,7 +19,7 @@ git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
 
-export ARCH=$(arch)
+export ARCH=$(uname -m)
 export COMP_FLAGS=""
 if [[ "$ARCH" == "x86_64" ]]
 then
@@ -109,6 +109,7 @@ mkdir build
 cd build || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+          -DENABLE_TESTS=OFF \
           -DCMAKE_C_FLAGS="-flto -O3 $COMP_FLAGS" \
           -DCMAKE_CXX_FLAGS="-flto -O3 $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
@@ -150,7 +151,8 @@ sudo make install || exit
 unset CFLAGS
 
 # ldconfig for shared libs
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf
+sudo mkdir /etc/ld.so.conf.d/
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
 sudo ldconfig
 
 # build ffmpeg
