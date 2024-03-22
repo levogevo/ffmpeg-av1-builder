@@ -78,9 +78,9 @@ fi
 # build svt-av1
 cd "$SVT_DIR/" || exit
 git pull
-rm -rf build
-mkdir build
-cd build || exit
+rm -rf build_svt
+mkdir build_svt
+cd build_svt || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
           -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
