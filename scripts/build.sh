@@ -18,6 +18,7 @@ git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
 git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
+git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
@@ -36,14 +37,17 @@ export PATH="/usr/lib/ccache/:$PATH"
 # rockchip ffmpeg libs
 FFMPEG_ROCKCHIP=""
 IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
+# disabling due to decode errors
+IS_ROCKCHIP="no"
 if [[ "$IS_ROCKCHIP" == "yes" ]]
 then
   FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+  FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
   # clone rockchip specific repos
   git clone --depth 1 https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
-  git clone -b jellyfin-mpp --depth=1 https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
-  git clone -b jellyfin-rga --depth=1 https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+  git clone --depth=1 -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+  git clone --depth=1 -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
 
   # build mpp
   cd "$RKMPP_DIR/" || exit
@@ -73,8 +77,6 @@ then
      --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
   ninja -vC rga_build.user || exit
   sudo ninja -vC rga_build.user install || exit
-else
-  git clone https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR" --depth 1  
 fi
 
 # build svt-av1
@@ -184,4 +186,6 @@ sudo make install || exit
 # validate encoders
 hash -r
 source ~/.profile
-ffmpeg -encoders | grep "av1"
+ffmpeg -encoders 2>&1 | grep "av1"
+ffmpeg -encoders 2>&1 | grep "rkmpp"
+ffmpeg -decoders 2>&1 | grep "rkmpp"
