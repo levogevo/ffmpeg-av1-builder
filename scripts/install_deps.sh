@@ -6,9 +6,9 @@ DEPENDENCY_LIST="autoconf automake build-essential cmake git-core g++-12 \
   texinfo wget zlib1g-dev nasm yasm libssl-dev time python3 meson ninja-build gobjc++ \
   doxygen xxd jq lshw gnuplot python3-pip curl clang valgrind ccache gawk mawk"
 
-USING_NALA=$(which nala > /dev/null; echo $?)
-USING_APT=$(which apt > /dev/null; echo $?)
-USING_PACMAN=$(which pacman > /dev/null; echo $?)
+USING_NALA=$(type nala > /dev/null; echo $?)
+USING_APT=$(type apt > /dev/null; echo $?)
+USING_PACMAN=$(type pacman > /dev/null; echo $?)
 
 if [[ "$USING_NALA" == "0" ]]; then
   # if nala fails, try apt
