@@ -63,13 +63,17 @@ uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
 echo "CPU product:$CPU_PROD with $THREADS threads" >> $LOG
 
-# Find versions of files
-cd /usr/local/lib || exit
-SVTAV1_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libSvtAv1Enc.so")")
-RAV1E_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "librav1e.so")")
-AOM_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libaom.so")")
-VMAF_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libvmaf.so")")
-DAV1D_VER=$(basename "$(find . -mindepth 1 ! -type l | grep "libdav1d.so")")
+# Find versions of libs
+LDD_TEXT="$BENCHMARK_DIR/ldd.txt"
+ldd $(which ffmpeg) > "$LDD_TEXT"
+get_version() {
+    cat "$LDD_TEXT" | grep "$1" | cut -d' ' -f3 | xargs readlink
+}
+SVTAV1_VER=$(get_version "libSvtAv1Enc")
+RAV1E_VER=$(get_version "librav1e")
+AOM_VER=$(get_version "libaom")
+VMAF_VER=$(get_version "libvmaf")
+DAV1D_VER=$(get_version "libdav1d")
 cd "$BASE_DIR" || exit
 echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER $DAV1D_VER" >> "$LOG"
 
