@@ -10,6 +10,9 @@ DAV1D_DIR="$BASE_DIR/dav1d"
 OPUS_DIR="$BASE_DIR/opus"
 RKMPP_DIR="$BASE_DIR/rkmpp"
 RKRGA_DIR="$BASE_DIR/rkrga"
+X264_DIR="$BASE_DIR/x264"
+X265_DIR="$BASE_DIR/x265"
+VPX_DIR="$BASE_DIR/vpx"
 
 # clone
 git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
@@ -19,6 +22,9 @@ git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
 git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
+git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
+git clone --depth 1 https://github.com/videolan/x265.git "$X265_DIR"
+git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
 
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
@@ -30,6 +36,9 @@ then
   COMP_FLAGS="-mcpu=native"
 fi
 echo "COMP_FLAGS: $COMP_FLAGS"
+
+# set optimization level
+OPT_LVL="3"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
@@ -60,8 +69,8 @@ then
   cmake .. -DCMAKE_BUILD_TYPE=Release \
            -DBUILD_SHARED_LIBS=ON \
            -DBUILD_TEST=OFF \
-           -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
-           -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+           -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
+           -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
   make -j "$(nproc)" || exit
   sudo make install || exit
 
@@ -87,8 +96,8 @@ mkdir build_svt.user
 cd build_svt.user || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
+          -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -117,8 +126,8 @@ cd build_aom.user || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
           -DENABLE_TESTS=OFF \
-          -DCMAKE_C_FLAGS="-flto -O3 $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-flto -O3 $COMP_FLAGS" || exit
+          -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
+          -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 
@@ -133,7 +142,7 @@ mkdir build.user
 cd build.user || exit
 pip install meson
 meson setup ../ build.user --buildtype release -Denable_float=true -Db_lto=true \
-     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
+     --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
 
@@ -154,11 +163,48 @@ cd "$OPUS_DIR" || exit
 git stash && git stash drop
 git pull
 ./autogen.sh || exit
-export CFLAGS="-O3 -flto $COMP_FLAGS"
+export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
 ./configure || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
 unset CFLAGS
+
+# build x264
+cd "$X264_DIR" || exit
+git stash && git stash drop
+git pull
+./configure --enable-static --enable-pic \
+     --enable-shared --enable-lto \
+     --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
+
+# build x265
+cd "$X265_DIR" || exit
+git stash && git stash drop
+git pull
+rm -rf build.user
+mkdir build.user
+cd build.user || exit
+cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
+          -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
+          -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
+make -j "$(nproc)" || exit
+sudo make install || exit
+
+# build vpx
+cd "$VPX_DIR" || exit
+git stash && git stash drop
+git pull
+./configure --enable-pic --as=yasm \
+     --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
+     --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
+     --disable-examples --disable-docs \
+     --enable-better-hw-compatibility \
+     --enable-vp9-highbitdepth \
+     --enable-shared
+make -j "$(nproc)" || exit
+sudo make install || exit
 
 # ldconfig for shared libs
 sudo mkdir /etc/ld.so.conf.d/
@@ -174,10 +220,12 @@ make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
+     --enable-gpl --enable-libx264 \
+     --enable-libx265 --enable-libvpx \
      --arch="$ARCH" --cpu=native \
      --enable-lto $FFMPEG_ROCKCHIP \
-     --extra-cflags="-O3 $COMP_FLAGS" \
-     --extra-cxxflags="-O3 $COMP_FLAGS" \
+     --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
+     --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
      --disable-podpages --disable-txtpages || exit
 make -j "$(nproc)" || exit
