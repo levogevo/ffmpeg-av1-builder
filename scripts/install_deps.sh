@@ -9,7 +9,7 @@ APT_DEP_NAMES="build-essential git-core g++-12 libass-dev libfreetype6-dev \
   libxcb-shm0-dev libxcb-xfixes0-dev zlib1g-dev libssl-dev ninja-build \
   gobjc++ python3-pip mawk"
 
-PACMAN_DEP_NAMES="base-devel ninja pacman-pip"
+PACMAN_DEP_NAMES="base-devel ninja python-pip"
 
 USING_NALA=$(type nala > /dev/null; echo $?)
 USING_APT=$(type apt > /dev/null; echo $?)
