@@ -87,6 +87,8 @@ mkdir build_svt.user
 cd build_svt.user || exit
 make clean
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+          -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
+          -DCOVERAGE=OFF \
           -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
           -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
