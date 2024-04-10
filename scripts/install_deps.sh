@@ -1,15 +1,36 @@
 #!/bin/bash
 
-PKG_MNG="apt-get"
+COMMON_DEP_NAMES="autoconf automake cmake libtool pkg-config bc texinfo \
+  wget nasm yasm time python3 meson doxygen xxd jq lshw gnuplot curl \
+  clang valgrind ccache gawk"
 
-sudo "$PKG_MNG" update
-sudo "$PKG_MNG" upgrade -qy
+APT_DEP_NAMES="build-essential git-core g++-12 libass-dev libfreetype6-dev \
+  libsdl2-dev libva-dev libvdpau-dev gcc-12 libvorbis-dev libxcb1-dev \
+  libxcb-shm0-dev libxcb-xfixes0-dev zlib1g-dev libssl-dev ninja-build \
+  gobjc++ python3-pip mawk"
 
-sudo "$PKG_MNG" install autoconf automake build-essential cmake git-core g++-12 \
-  libass-dev libfreetype6-dev libsdl2-dev libtool libva-dev libvdpau-dev gcc-12 \
-  libvorbis-dev libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev pkg-config bc libnuma-dev \
-  texinfo wget zlib1g-dev nasm yasm libssl-dev time python3 meson ninja-build gobjc++ \
-  doxygen xxd jq lshw gnuplot python3-pip curl clang valgrind ccache gawk mawk -y || exit 1
+PACMAN_DEP_NAMES="base-devel ninja python-pip"
+
+USING_NALA=$(type nala > /dev/null; echo $?)
+USING_APT=$(type apt > /dev/null; echo $?)
+USING_PACMAN=$(type pacman > /dev/null; echo $?)
+
+if [[ "$USING_NALA" == "0" ]]; then
+  # if nala fails, try apt
+  USING_APT="1"
+  echo "Installing with nala"
+  sudo nala update
+  sudo nala install -y $COMMON_DEP_NAMES $APT_DEP_NAMES || USING_APT="0"
+fi
+if [[ "$USING_APT" == "0" ]]; then
+  echo "Installing with apt"
+  sudo apt-get update
+  sudo apt-get install -y $COMMON_DEP_NAMES $APT_DEP_NAMES || exit 1
+fi
+if [[ "$USING_PACMAN" == "0" ]]; then
+  echo "Installing with pacman"
+  sudo pacman -S $COMMON_DEP_NAMES $PACMAN_DEP_NAMES --noconfirm || exit 1
+fi
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 source "$HOME/.cargo/env"
