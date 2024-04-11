@@ -23,7 +23,7 @@ git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
 git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
-git clone --depth 1 https://github.com/videolan/x265.git "$X265_DIR"
+git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
 git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
 
 export ARCH=$(uname -m)
@@ -183,16 +183,25 @@ sudo make install || exit
 
 # build x265
 cd "$X265_DIR" || exit
-git stash && git stash drop
-git pull
+test -d ".git" && git stash && git stash drop
+test -d ".git" && git pull
+# x265 is dumb and only generates pkgconfig
+# if git is not there ("release")
+mv .git .no_git
 rm -rf build.user
 mkdir build.user
 cd build.user || exit
 cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
+          -G "Unix Makefiles" -DHIGH_BIT_DEPTH=ON \
+          -DENABLE_HDR10_PLUS=ON \
+          -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
           -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
           -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
+cd "$X265_DIR" || exit
+# revert git
+mv .no_git .git
 
 # build vpx
 cd "$VPX_DIR" || exit
@@ -210,15 +219,14 @@ sudo make install || exit
 
 # ldconfig for shared libs
 sudo mkdir /etc/ld.so.conf.d/
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
+echo -e "/usr/local/lib\n/usr/local/lib/x86_64-linux-gnu" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
 sudo ldconfig
 
 # build ffmpeg
 cd "$FFMPEG_DIR/" || exit
 git stash && git stash drop
 git pull
-export PKG_CONFIG_PATH+=":/usr/local/lib/pkgconfig"
-make clean
+export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
