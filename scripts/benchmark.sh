@@ -57,7 +57,7 @@ PRESET=(8)
 LOG="$BENCHMARK_DIR/results.txt"
 CSV="$BENCHMARK_DIR/results.csv"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
-ffmpeg -version | grep "version" > "$LOG"
+ffmpeg -version | grep -E "version|built|configuration" > "$LOG"
 echo "ENCODER,PRESET,CRF,INPUT,TIME_TAKEN,SIZE,PSNR_HVS,CAMBI,FLOAT_MS_SSIM,VMAF" > "$CSV"
 uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
