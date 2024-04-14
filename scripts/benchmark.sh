@@ -43,12 +43,12 @@ THREADS="$(nproc)"
 
 # Different variables to test
 CRF=(20 25 30)
-ENCODER=('libsvtav1' 'librav1e' 'libaom-av1')
+ENCODER=('librav1e' 'libaom-av1' 'libsvtav1' 'libx264' 'libx265' 'libvpx-vp9')
 PRESET=(2 4 6 8)
 
 # uncomment for quick testing
 CRF=(25)
-ENCODER=('libsvtav1')
+# ENCODER=('libsvtav1')
 # ENCODER=('librav1e')
 # ENCODER=('libaom-av1')
 PRESET=(8)
@@ -107,13 +107,27 @@ do
                 then
                     PARAMS="-preset $preset -crf $crf -svtav1-params \
                             scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
+                elif [[ ("$encoder" == "libx264") || ("$encoder" == "libx265") ]]
+                then
+                    test "$preset" -eq 2 && preset=veryslow
+                    test "$preset" -eq 4 && preset=slower
+                    test "$preset" -eq 6 && preset=slower
+                    test "$preset" -eq 8 && preset=slow
+                    PARAMS="-preset $preset -crf $crf"
+                elif [[ "$encoder" == "libvpx-vp9" ]]
+                then
+                    test "$preset" -eq 2 && cpu_used=2
+                    test "$preset" -eq 4 && cpu_used=3
+                    test "$preset" -eq 6 && cpu_used=4
+                    test "$preset" -eq 8 && cpu_used=5
+                    PARAMS="-cpu-used $cpu_used -crf $crf -row-mt 1 -deadline 0 -quality 0"
                 else
                     PARAMS=""
                 fi
 
                 # encode
                 export TIMEFORMAT=%R
-                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -c:a copy -c:v $encoder $PARAMS -pix_fmt yuv420p10le $OUTPUT"
+                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -pix_fmt yuv420p10le -c:v $encoder $PARAMS $OUTPUT"
                 (time $FFMPEG_CMD) |& tee TIME
                 TIME_DIFF="$(cat TIME | tail -n 1)"
                 rm TIME
