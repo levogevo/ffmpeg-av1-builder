@@ -3,34 +3,77 @@
 # this is simply my recommended encoding method.
 # do not take this as a holy grail.
 
+usage() {
+    echo "unrecognized arguments, please retry"
+    echo "encode -i input_file [-p] output_file"
+    echo -e "\t-p print the command instead of executing [optional]"
+    return 0 
+}
+
 encode() {
-    FILENAME="$1"
-    OUTPUT_NAME=""
-    # allow optional output filename
-    if [[ -n "$2" ]];
-    then
-        OUTPUT_NAME="$2"
-    else
-        OUTPUT_NAME="${HOME}/av1_${FILENAME}"
-    fi
-    
-    echo ffmpeg -i \""$FILENAME"\" -map 0 \
-        -af '"aformat=channel_layouts=7.1|5.1|stereo|mono"' -c:a libopus $(get_bitrate_audio "$FILENAME") \
-        -c:s copy -c:v libsvtav1 -pix_fmt yuv420p10le -crf 20 -preset 3 -g 240 \
+    echo ffmpeg -i \""$INPUT"\" -map 0 \
+        -af '"aformat=channel_layouts=7.1|5.1|stereo|mono"' -c:a libopus $(get_bitrate_audio "$INPUT") \
+        -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240 \
         -svtav1-params \"tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1\" \
-        \""$OUTPUT_NAME"\"
+        \""$OUTPUT"\" > /tmp/encode.sh
+    
+        if [[ "$PRINT_OUT" == "true" ]];
+        then
+            cat /tmp/encode.sh
+        else
+            bash /tmp/encode.sh
+        fi
+}
+
+unmap_streams(){
+    INPUT="$1"
+    num_video_streams=$(ffprobe -v error -select_streams v -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
+    for ((i = 0; i < num_video_streams; i++)); do
+        ffprobe -v error -select_streams "v:$i" -of default=noprint_wrappers=1:nokey=1 "$INPUT"
+        ffprobe -select_streams "v:0" -of default=noprint_wrappers=1:nokey=1 'first_20_DN.mkv'
+        ffprobe -v error -select_streams v -show_entries stream=index:stream_tags=type -of csv=p=0 'first_20_DN.mkv'
+    done
+    echo "$num_video_streams"
 }
 
 get_bitrate_audio() {
-    FILENAME="$1"
     bitrate_cmd=""
-    num_streams=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$FILENAME" | wc -l)
-    for ((i = 0; i < num_streams; i++)); do
-        num_channels=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$FILENAME")
+    num_audio_streams=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
+    for ((i = 0; i < num_audio_streams; i++)); do
+        num_channels=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
         bitrate=$((num_channels * 64))
         bitrate_cmd+="-b:a:$i ${bitrate}k "
     done
     echo "$bitrate_cmd"
 }
 
-encode "$@"
+# between only 1-4 arguments
+test "$#" -eq 0 && usage && exit 1
+test "$#" -gt 4 && usage && exit 1
+while getopts "i:p" flag; do
+    case "${flag}" in
+        i)
+            INPUT="${OPTARG}"
+            ;;
+        p)
+            PRINT_OUT="true"
+            ;;
+        *)
+            usage
+            exit 1
+            ;;        
+    esac
+done
+
+# allow optional output filename
+if [[ "$PRINT_OUT" == "true" && "$#" -eq 4 ]];
+then
+    OUTPUT="${@: -1}"
+else
+    OUTPUT="${HOME}/av1_${INPUT}"
+fi
+
+encode
+
+# encode "$@"
+# unmap_streams "$@"
