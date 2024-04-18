@@ -106,14 +106,14 @@ do
                 elif [[ "$encoder" == "libsvtav1" ]]
                 then
                     PARAMS="-preset $preset -crf $crf -svtav1-params \
-                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
+                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1"
                 else
                     PARAMS=""
                 fi
 
                 # encode
                 export TIMEFORMAT=%R
-                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -c:a copy -c:v $encoder $PARAMS -pix_fmt yuv420p10le $OUTPUT"
+                FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -pix_fmt yuv420p10le -c:a copy -c:v $encoder $PARAMS $OUTPUT"
                 (time $FFMPEG_CMD) |& tee TIME
                 TIME_DIFF="$(cat TIME | tail -n 1)"
                 rm TIME

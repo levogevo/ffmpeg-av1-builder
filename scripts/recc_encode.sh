@@ -47,10 +47,15 @@ get_bitrate_audio() {
     echo "$bitrate_cmd"
 }
 
-# between only 1-4 arguments
-test "$#" -eq 0 && usage && exit 1
-test "$#" -gt 4 && usage && exit 1
-while getopts "i:p" flag; do
+
+OPTS='i:p'
+NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
+PRINT_OUT="false"
+MIN_OPT=2
+MAX_OPT=4
+test "$#" -lt $MIN_OPT && usage && exit 1
+test "$#" -gt $MAX_OPT && usage && exit 1
+while getopts "$OPTS" flag; do
     case "${flag}" in
         i)
             INPUT="${OPTARG}"
@@ -66,12 +71,20 @@ while getopts "i:p" flag; do
 done
 
 # allow optional output filename
-if [[ "$PRINT_OUT" == "true" && "$#" -eq 4 ]];
-then
+if [[ "$#" -eq $MAX_OPT ]]; then
     OUTPUT="${@: -1}"
-else
+elif [[ 
+    ("$PRINT_OUT" == "true") &&
+    ( "$#" -eq 3) 
+    ]]; then
     OUTPUT="${HOME}/av1_${INPUT}"
+elif [[ "$#" -eq 2 ]]; then
+    OUTPUT="${HOME}/av1_${INPUT}"
+else
+    OUTPUT="${@: -1}"
 fi
+
+echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, OUTPUT: $OUTPUT"
 
 encode
 
