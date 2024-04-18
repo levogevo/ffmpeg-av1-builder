@@ -84,7 +84,9 @@ else
     OUTPUT="${@: -1}"
 fi
 
+echo
 echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, OUTPUT: $OUTPUT"
+echo
 
 encode
 
