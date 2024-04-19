@@ -11,40 +11,42 @@ usage() {
 }
 
 encode() {
-    echo ffmpeg -i \""$INPUT"\" -map 0 \
+    ENCODE_FILE="/tmp/encode.sh"
+
+    echo ffmpeg -i \""$INPUT"\" -map 0 $(unmap_streams "$INPUT") \
         -af '"aformat=channel_layouts=7.1|5.1|stereo|mono"' -c:a libopus $(get_bitrate_audio "$INPUT") \
         -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240 \
         -svtav1-params \"tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1\" \
-        \""$OUTPUT"\" > /tmp/encode.sh
+        \""$OUTPUT"\" "&& mkvpropedit \"$OUTPUT\" --add-track-statistics-tags " > "$ENCODE_FILE"
     
         if [[ "$PRINT_OUT" == "true" ]];
         then
-            cat /tmp/encode.sh
+            cat "$ENCODE_FILE"
         else
-            bash /tmp/encode.sh
+            bash "$ENCODE_FILE"
         fi
 }
 
 unmap_streams(){
     INPUT="$1"
-    num_video_streams=$(ffprobe -v error -select_streams v -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
-    for ((i = 0; i < num_video_streams; i++)); do
-        ffprobe -v error -select_streams "v:$i" -of default=noprint_wrappers=1:nokey=1 "$INPUT"
-        ffprobe -select_streams "v:0" -of default=noprint_wrappers=1:nokey=1 'first_20_DN.mkv'
-        ffprobe -v error -select_streams v -show_entries stream=index:stream_tags=type -of csv=p=0 'first_20_DN.mkv'
+    UNMAP_FILTER="jpeg|png"
+    UNMAP_STREAMS=$(ffprobe "$INPUT" 2>&1 | grep "Stream" | grep -Ei "$UNMAP_FILTER" | cut -d':' -f2 | tr '\n' ' ')
+    UNMAP_CMD=""
+    for UNMAP_STREAM in $UNMAP_STREAMS; do
+        UNMAP_CMD+="-map -0:$UNMAP_STREAM "
     done
-    echo "$num_video_streams"
+    echo "$UNMAP_CMD"
 }
 
 get_bitrate_audio() {
-    bitrate_cmd=""
-    num_audio_streams=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
-    for ((i = 0; i < num_audio_streams; i++)); do
-        num_channels=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
-        bitrate=$((num_channels * 64))
-        bitrate_cmd+="-b:a:$i ${bitrate}k "
+    BITRATE_CMD=""
+    NUM_AUDIO_STREAMS=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
+    for ((i = 0; i < NUM_AUDIO_STREAMS; i++)); do
+        NUM_CHANNELS=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
+        BITRATE=$((NUM_CHANNELS * 64))
+        BITRATE_CMD+="-b:a:$i ${BITRATE}k "
     done
-    echo "$bitrate_cmd"
+    echo "$BITRATE_CMD"
 }
 
 
@@ -89,6 +91,3 @@ echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, OUTPUT: $OUTPUT"
 echo
 
 encode
-
-# encode "$@"
-# unmap_streams "$@"
