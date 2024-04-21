@@ -10,9 +10,16 @@ DAV1D_DIR="$BASE_DIR/dav1d"
 OPUS_DIR="$BASE_DIR/opus"
 RKMPP_DIR="$BASE_DIR/rkmpp"
 RKRGA_DIR="$BASE_DIR/rkrga"
+DOVI_DIR="$BASE_DIR/dovi"
+SVT_PSY_DIR="$BASE_DIR/svt-psy"
+
+# build svt-psy + dovi_tool
+BUILD_PSY="true"
 
 # clone
 git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+git clone --depth 1 https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+git clone --depth 1 https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
 git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
 git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
@@ -79,20 +86,58 @@ then
   sudo ninja -vC rga_build.user install || exit
 fi
 
-# build svt-av1
-cd "$SVT_DIR/" || exit
-git pull
-rm -rf build_svt.user
-mkdir build_svt.user
-cd build_svt.user || exit
-make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
-          -DCOVERAGE=OFF \
-          -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
-make -j "$(nproc)" || exit
-sudo make install || exit
+if [[ "$BUILD_PSY" == "true" ]];
+then
+     # build dovi_tool
+     cd "$DOVI_DIR/" || exit
+     git stash && git stash drop
+     git pull
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     source "$HOME/.cargo/env" # for good measure
+     cargo clean
+     RUSTFLAGS="-C target-cpu=native" cargo build --release
+     sudo cp target/release/dovi_tool /usr/local/bin/ || exit
+
+     # build libdovi
+     cd dolby_vision || exit
+     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
+          --prefix="$DOVI_DIR/ffmpeg_build.user" \
+          --libdir="$DOVI_DIR/ffmpeg_build.user"/lib \
+          --includedir="$DOVI_DIR/ffmpeg_build.user"/include
+     cd ffmpeg_build.user || exit
+     sudo cp ./lib/* /usr/local/lib/ -r || exit
+     sudo cp ./include/* /usr/local/include/ -r
+
+     # build svt-avt-psy
+     cd "$SVT_PSY_DIR/" || exit
+     git pull
+     rm -rf build_svt.user
+     mkdir build_svt.user
+     cd build_svt.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
+               -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install
+else
+     # build svt-av1
+     cd "$SVT_DIR/" || exit
+     git pull
+     rm -rf build_svt.user
+     mkdir build_svt.user
+     cd build_svt.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF \
+               -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install || exit
+fi
 
 # build rav1e
 cd "$RAV1E_DIR/" || exit
