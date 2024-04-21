@@ -106,7 +106,7 @@ do
                 elif [[ "$encoder" == "libsvtav1" ]]
                 then
                     PARAMS="-preset $preset -crf $crf -svtav1-params \
-                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1 "
+                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1"
                 elif [[ ("$encoder" == "libx264") || ("$encoder" == "libx265") ]]
                 then
                     test "$preset" -eq 2 && preset=veryslow
