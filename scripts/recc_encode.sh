@@ -14,18 +14,20 @@ encode() {
     ENCODE_FILE="/tmp/encode.sh"
     SVT_PARAMS="tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     UNMAP=$(unmap_streams "$INPUT")
-    AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono"'
+    AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono" -c:a libopus'
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
     FFMPEG_PARAMS='-y -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240'
+    NL=' \\\n\t'
 
-    echo ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
-        $AUDIO_FORMAT -c:a libopus $AUDIO_BITRATE \
+    echo '#!/bin/bash' > "$ENCODE_FILE"
+    echo -e ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
+        $AUDIO_FORMAT $NL $AUDIO_BITRATE \
         "$FFMPEG_PARAMS" -dolbyvision 1 -svtav1-params \
-        "\"$SVT_PARAMS\" \"$OUTPUT\" ||" \
+        $NL "\"$SVT_PARAMS\" \"$OUTPUT\" ||" $NL \
         ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
-        $AUDIO_FORMAT -c:a libopus $AUDIO_BITRATE \
+        $AUDIO_FORMAT $NL $AUDIO_BITRATE \
         "$FFMPEG_PARAMS" -svtav1-params \
-        "\"$SVT_PARAMS\" \"$OUTPUT\"" > "$ENCODE_FILE"        
+        $NL "\"$SVT_PARAMS\" \"$OUTPUT\"" >> "$ENCODE_FILE"        
     
     echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
 
