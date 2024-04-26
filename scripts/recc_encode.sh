@@ -15,7 +15,7 @@ encode() {
 
     echo ffmpeg -i \""$INPUT"\" -map 0 $(unmap_streams "$INPUT") \
         -af '"aformat=channel_layouts=7.1|5.1|stereo|mono"' -c:a libopus $(get_bitrate_audio "$INPUT") \
-        -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240 -dolbyvision 1 -svtav1-params \
+        -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240 -svtav1-params \
         \"tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15\" \
         \""$OUTPUT"\" "&& mkvpropedit \"$OUTPUT\" --add-track-statistics-tags " > "$ENCODE_FILE"
     
