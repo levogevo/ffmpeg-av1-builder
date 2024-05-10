@@ -4,15 +4,15 @@
 # do not take this as a holy grail.
 
 usage() {
-    echo "unrecognized arguments, please retry"
-    echo "encode -i input_file [-p] output_file"
-    echo -e "\t-p print the command instead of executing [optional]"
+    echo "encode -i input_file [-p true/false] [-g NUM] output_file"
+    echo -e "\t-p print the command instead of executing it [optional]"
+    echo -e "\t-g set film grain for encode [optional]"
     return 0 
 }
 
 encode() {
     ENCODE_FILE="/tmp/encode.sh"
-    SVT_PARAMS="tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     UNMAP=$(unmap_streams "$INPUT")
     AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono" -c:a libopus'
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
@@ -62,22 +62,39 @@ get_bitrate_audio() {
 }
 
 
-OPTS='i:p'
+OPTS='i:p:g:'
 NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
 PRINT_OUT="false"
+GRAIN=""
+# only using -i
 MIN_OPT=2
-MAX_OPT=4
-test "$#" -lt $MIN_OPT && usage && exit 1
-test "$#" -gt $MAX_OPT && usage && exit 1
+# using all + output name
+MAX_OPT=$(( NUM_OPTS * 2 - 1 ))
+test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
+test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
 while getopts "$OPTS" flag; do
     case "${flag}" in
         i)
             INPUT="${OPTARG}"
             ;;
         p)
-            PRINT_OUT="true"
+            PRINT_OUT="${OPTARG}"
+            if [[ "$PRINT_OUT" != "false" && "$PRINT_OUT" != "true" ]]; then
+                echo "unrecognized argument for -p: $PRINT_OUT"
+                usage
+                exit 1
+            fi
+            ;;
+        g)
+            if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
+                echo "${OPTARG} is not a positive integer"
+                usage
+                exit 1
+            fi
+            GRAIN="film-grain=${OPTARG}:"
             ;;
         *)
+            echo "wrong flags given"
             usage
             exit 1
             ;;        
@@ -87,19 +104,11 @@ done
 # allow optional output filename
 if [[ "$#" -eq $MAX_OPT ]]; then
     OUTPUT="${@: -1}"
-elif [[ 
-    ("$PRINT_OUT" == "true") &&
-    ( "$#" -eq 3) 
-    ]]; then
-    OUTPUT="${HOME}/av1_${INPUT}"
-elif [[ "$#" -eq 2 ]]; then
-    OUTPUT="${HOME}/av1_${INPUT}"
 else
-    OUTPUT="${@: -1}"
+    OUTPUT="${HOME}/av1_${INPUT}"
 fi
 
 echo
-echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, OUTPUT: $OUTPUT"
+echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, GRAIN: $GRAIN, OUTPUT: $OUTPUT"
 echo
-
 encode
