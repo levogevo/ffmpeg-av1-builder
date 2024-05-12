@@ -109,6 +109,12 @@ else
     OUTPUT="${HOME}/av1_${INPUT}"
 fi
 
+# always use same container for output
+INP_FILENAME=$(basename -- "$INPUT")
+EXT="${INP_FILENAME##*.}"
+OUTPUT="${OUTPUT%.*}"
+OUTPUT+=".${EXT}"
+
 echo
 echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, GRAIN: $GRAIN, OUTPUT: $OUTPUT"
 echo
