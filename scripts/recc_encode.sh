@@ -103,7 +103,7 @@ while getopts "$OPTS" flag; do
 done
 
 # allow optional output filename
-if [[ "$#" -eq $MAX_OPT ]]; then
+if [[ $(($# % 2)) != 0 ]]; then
     OUTPUT="${@: -1}"
 else
     OUTPUT="${HOME}/av1_${INPUT}"
