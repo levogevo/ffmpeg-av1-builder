@@ -12,7 +12,7 @@ usage() {
 
 encode() {
     ENCODE_FILE="/tmp/encode.sh"
-    SVT_PARAMS="${GRAIN}tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm`-`min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}tune=0:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     UNMAP=$(unmap_streams "$INPUT")
     AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono" -c:a libopus'
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
