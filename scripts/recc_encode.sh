@@ -29,9 +29,11 @@ encode() {
         "$FFMPEG_PARAMS" -svtav1-params \
         $NL "\"$SVT_PARAMS\" \"$OUTPUT\"" >> "$ENCODE_FILE"        
     
-    echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
-    echo "mkvpropedit \"$OUTPUT\" --edit info --set \"title=\"" >> "$ENCODE_FILE"
-
+    if [[ "$EXT" == "mkv" ]]; then
+        echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
+        echo "mkvpropedit \"$OUTPUT\" --edit info --set \"title=\"" >> "$ENCODE_FILE"
+    fi
+    
     if [[ "$PRINT_OUT" == "true" ]];
     then
         cat "$ENCODE_FILE"
