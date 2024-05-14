@@ -33,7 +33,7 @@ encode() {
         echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
         echo "mkvpropedit \"$OUTPUT\" --edit info --set \"title=\"" >> "$ENCODE_FILE"
     fi
-    
+
     if [[ "$PRINT_OUT" == "true" ]];
     then
         cat "$ENCODE_FILE"
@@ -94,7 +94,7 @@ while getopts "$OPTS" flag; do
                 usage
                 exit 1
             fi
-            GRAIN="film-grain=${OPTARG}::film-grain-denoise=1"
+            GRAIN="film-grain=${OPTARG}:film-grain-denoise=1:"
             ;;
         *)
             echo "wrong flags given"
