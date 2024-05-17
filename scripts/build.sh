@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-     echo "./scripts/build.sh [-h] [-p] [-o] [r] [-a]"
+     echo "./scripts/build.sh [-h] [-p] [-o] [-r]"
      echo -e "\th: display this help output"
      echo -e "\tp: build svt-av1-psy with dovi library"
      echo -e "\to: build other encoders x264/5 and vpx"
@@ -14,7 +14,8 @@ update_git() {
      git pull
 }
 
-OPTS='hpao:'
+GREP_FILTER="av1"
+OPTS='hpor'
 NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
 MIN_OPT=0
 # using all
@@ -33,10 +34,12 @@ while getopts "$OPTS" flag; do
                ;;
         o)
                export BUILD_OTHERS="true"
+               GREP_FILTER+="|x26|libvpx"
                echo "building other encoders"
                ;;
         r)
                export BUILD_ROCKCHIP="true"
+               GREP_FILTER+="|rkmpp"
                echo "building rockchip media platform"
                ;;
         *)
@@ -87,7 +90,7 @@ fi
 echo "COMP_FLAGS: $COMP_FLAGS"
 
 # set optimization level
-OPT_LVL="3"
+OPT_LVL="1"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
@@ -97,40 +100,40 @@ FFMPEG_ROCKCHIP=""
 # IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$BUILD_ROCKCHIP" == "true" ]]
 then
-  FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
-  FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
+     FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+     FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
-  # clone rockchip specific repos
-  git clone --depth 1 https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
-  git clone --depth=1 -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
-  git clone --depth=1 -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+     # clone rockchip specific repos
+     git clone --depth 1 https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
+     git clone --depth=1 -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+     git clone --depth=1 -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
 
-  # build mpp
-  cd "$RKMPP_DIR/" || exit
-  update_git
-  rm -rf mpp_build.user
-  mkdir mpp_build.user
-  cd mpp_build.user || exit
-  make clean
-  cmake .. -DCMAKE_BUILD_TYPE=Release \
-           -DBUILD_SHARED_LIBS=ON \
-           -DBUILD_TEST=OFF \
-           -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
-           -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-  make -j "$(nproc)" || exit
-  sudo make install || exit
+     # build mpp
+     cd "$RKMPP_DIR/" || exit
+     update_git
+     rm -rf mpp_build.user
+     mkdir mpp_build.user
+     cd mpp_build.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release \
+               -DBUILD_SHARED_LIBS=ON \
+               -DBUILD_TEST=OFF \
+               -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install || exit
 
-  # build rga
-  cd "$RKRGA_DIR" || exit
-  update_git
-  rm -rf rga_build.user
-  mkdir rga_build.user
-  cd rga_build.user || exit
-  meson setup ../ rga_build.user --buildtype release -Db_lto=true \
+     # build rga
+     cd "$RKRGA_DIR" || exit
+     update_git
+     rm -rf rga_build.user
+     mkdir rga_build.user
+     cd rga_build.user || exit
+     meson setup ../ rga_build.user --buildtype release -Db_lto=true \
      --default-library=shared -Dlibdrm=false -Dlibrga_demo=false \
-     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
-  ninja -vC rga_build.user || exit
-  sudo ninja -vC rga_build.user install || exit
+     --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
+     ninja -vC rga_build.user || exit
+     sudo ninja -vC rga_build.user install || exit
 fi
 
 if [[ "$BUILD_PSY" == "true" ]];
@@ -164,8 +167,8 @@ then
      cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
                -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
-               -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
-               -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+               -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
      make -j "$(nproc)" || exit
      sudo make install
 else
@@ -234,7 +237,7 @@ rm -rf build.user
 mkdir build.user
 cd build.user || exit
 meson setup ../ build.user --buildtype release -Db_lto=true \
-     --optimization=3 -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
+     --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
 
@@ -248,51 +251,54 @@ make -j "$(nproc)" || exit
 sudo make install || exit
 unset CFLAGS
 
-# build x264
-cd "$X264_DIR" || exit
-git stash && git stash drop
-git pull
-./configure --enable-static --enable-pic \
-     --enable-shared --enable-lto \
-     --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
-make -j "$(nproc)" || exit
-sudo make install || exit
+if [[ "$BUILD_OTHERS" == "true" ]]; then
+     FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"
+     
+     # build x264
+     cd "$X264_DIR" || exit
+     update_git
+     ./configure --enable-static --enable-pic \
+          --enable-shared --enable-lto \
+          --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install || exit
 
-# build x265
-cd "$X265_DIR" || exit
-test -d ".git" && git stash && git stash drop
-test -d ".git" && git pull
-# x265 is dumb and only generates pkgconfig
-# if git is not there ("release")
-mv .git .no_git
-rm -rf build.user
-mkdir build.user
-cd build.user || exit
-cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
-          -G "Unix Makefiles" -DHIGH_BIT_DEPTH=ON \
-          -DENABLE_HDR10_PLUS=ON \
-          -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
-          -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
-make -j "$(nproc)" || exit
-sudo make install || exit
-cd "$X265_DIR" || exit
-# revert git
-mv .no_git .git
+     # build x265
+     cd "$X265_DIR" || exit
+     test -d ".git" && git stash && git stash drop
+     test -d ".git" && config pull.rebase false
+     test -d ".git" && git pull
+     # x265 is dumb and only generates pkgconfig
+     # if git is not there ("release")
+     mv .git .no_git
+     rm -rf build.user
+     mkdir build.user
+     cd build.user || exit
+     cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
+               -G "Unix Makefiles" -DHIGH_BIT_DEPTH=ON \
+               -DENABLE_HDR10_PLUS=ON \
+               -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
+               -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install || exit
+     cd "$X265_DIR" || exit
+     # revert git
+     mv .no_git .git
 
-# build vpx
-cd "$VPX_DIR" || exit
-git stash && git stash drop
-git pull
-./configure --enable-pic --as=yasm \
-     --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
-     --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
-     --disable-examples --disable-docs \
-     --enable-better-hw-compatibility \
-     --enable-vp9-highbitdepth \
-     --enable-shared
-make -j "$(nproc)" || exit
-sudo make install || exit
+     # build vpx
+     cd "$VPX_DIR" || exit
+     update_git
+     ./configure --enable-pic --as=yasm \
+          --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
+          --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
+          --disable-examples --disable-docs \
+          --enable-better-hw-compatibility \
+          --enable-vp9-highbitdepth \
+          --enable-shared
+     make -j "$(nproc)" || exit
+     sudo make install || exit
+fi
 
 # ldconfig for shared libs
 sudo mkdir /etc/ld.so.conf.d/
@@ -306,8 +312,7 @@ export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
-     --enable-gpl --enable-libx264 \
-     --enable-libx265 --enable-libvpx \
+     $FFMPEG_OTHERS \
      --arch="$ARCH" --cpu=native \
      --enable-lto $FFMPEG_ROCKCHIP \
      --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
@@ -321,7 +326,10 @@ sudo cp ff*_g /usr/local/bin/
 # validate encoders
 hash -r
 source ~/.profile
-ffmpeg -encoders 2>&1 | grep "av1"
-ffmpeg -encoders 2>&1 | grep "rkmpp"
-ffmpeg -decoders 2>&1 | grep "rkmpp"
+echo -e "\n"
+ffmpeg 2>&1 | grep "configuration"
+echo -e "\n  encoders:"
+ffmpeg -encoders 2>&1 | grep -E "$GREP_FILTER" | grep -Ev "configuration|wmav1"
+echo -e "\n  decoders:"
+ffmpeg -decoders 2>&1 | grep -E "$GREP_FILTER" | grep -Ev "configuration|wmav1"
 exit 0
