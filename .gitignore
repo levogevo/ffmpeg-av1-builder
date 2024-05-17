@@ -1,6 +1,7 @@
 ffmpeg
 rav1e
-svt
+svt*
+dovi
 aom
 vmaf
 dav1d

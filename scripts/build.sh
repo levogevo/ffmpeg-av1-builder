@@ -1,5 +1,50 @@
 #!/bin/bash
 
+usage() {
+     echo "./scripts/build.sh [-h] [-p] [-o] [r] [-a]"
+     echo -e "\th: display this help output"
+     echo -e "\tp: build svt-av1-psy with dovi library"
+     echo -e "\to: build other encoders x264/5 and vpx"
+     echo -e "\tr: build rockchip media libraries" 
+}
+
+update_git() {
+     git config pull.rebase false
+     git stash && git stash drop
+     git pull
+}
+
+OPTS='hpao:'
+NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
+MIN_OPT=0
+# using all
+MAX_OPT=$(( NUM_OPTS ))
+test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
+test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
+while getopts "$OPTS" flag; do
+    case "${flag}" in
+        h)
+               usage
+               exit 0
+               ;;
+        p)
+               export BUILD_PSY="true"
+               echo "building psy"
+               ;;
+        o)
+               export BUILD_OTHERS="true"
+               echo "building other encoders"
+               ;;
+        r)
+               export BUILD_ROCKCHIP="true"
+               echo "building rockchip media platform"
+               ;;
+        *)
+               echo "building default"
+               ;;
+    esac
+done
+
 BASE_DIR=$(pwd)
 SVT_DIR="$BASE_DIR/svt"
 RAV1E_DIR="$BASE_DIR/rav1e"
@@ -10,12 +55,16 @@ DAV1D_DIR="$BASE_DIR/dav1d"
 OPUS_DIR="$BASE_DIR/opus"
 RKMPP_DIR="$BASE_DIR/rkmpp"
 RKRGA_DIR="$BASE_DIR/rkrga"
+DOVI_DIR="$BASE_DIR/dovi"
+SVT_PSY_DIR="$BASE_DIR/svt-psy"
 X264_DIR="$BASE_DIR/x264"
 X265_DIR="$BASE_DIR/x265"
 VPX_DIR="$BASE_DIR/vpx"
 
 # clone
 git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+git clone --depth 1 https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+git clone --depth 1 https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
 git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
 git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
@@ -45,10 +94,8 @@ export PATH="/usr/lib/ccache/:$PATH"
 
 # rockchip ffmpeg libs
 FFMPEG_ROCKCHIP=""
-IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
-# disabling due to decode errors
-IS_ROCKCHIP="no"
-if [[ "$IS_ROCKCHIP" == "yes" ]]
+# IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
+if [[ "$BUILD_ROCKCHIP" == "true" ]]
 then
   FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
   FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
@@ -60,8 +107,7 @@ then
 
   # build mpp
   cd "$RKMPP_DIR/" || exit
-  git stash && git stash drop
-  git pull
+  update_git
   rm -rf mpp_build.user
   mkdir mpp_build.user
   cd mpp_build.user || exit
@@ -76,8 +122,7 @@ then
 
   # build rga
   cd "$RKRGA_DIR" || exit
-  git stash && git stash drop
-  git pull
+  update_git
   rm -rf rga_build.user
   mkdir rga_build.user
   cd rga_build.user || exit
@@ -88,25 +133,61 @@ then
   sudo ninja -vC rga_build.user install || exit
 fi
 
-# build svt-av1
-cd "$SVT_DIR/" || exit
-git pull
-rm -rf build_svt.user
-mkdir build_svt.user
-cd build_svt.user || exit
-make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
-          -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
-          -DCOVERAGE=OFF \
-          -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-make -j "$(nproc)" || exit
-sudo make install || exit
+if [[ "$BUILD_PSY" == "true" ]];
+then
+     # build dovi_tool
+     cd "$DOVI_DIR/" || exit
+     update_git
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     source "$HOME/.cargo/env" # for good measure
+     cargo clean
+     RUSTFLAGS="-C target-cpu=native" cargo build --release
+     sudo cp target/release/dovi_tool /usr/local/bin/ || exit
+
+     # build libdovi
+     cd dolby_vision || exit
+     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
+          --prefix="$DOVI_DIR/ffmpeg_build.user" \
+          --libdir="$DOVI_DIR/ffmpeg_build.user"/lib \
+          --includedir="$DOVI_DIR/ffmpeg_build.user"/include
+     cd ffmpeg_build.user || exit
+     sudo cp ./lib/* /usr/local/lib/ -r || exit
+     sudo cp ./include/* /usr/local/include/ -r
+
+     # build svt-avt-psy
+     cd "$SVT_PSY_DIR/" || exit
+     update_git
+     rm -rf build_svt.user
+     mkdir build_svt.user
+     cd build_svt.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
+               -DCMAKE_C_FLAGS="-O3 $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O3 $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install
+else
+     # build svt-av1
+     cd "$SVT_DIR/" || exit
+     update_git
+     rm -rf build_svt.user
+     mkdir build_svt.user
+     cd build_svt.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF \
+               -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
+     make -j "$(nproc)" || exit
+     sudo make install || exit
+fi
 
 # build rav1e
 cd "$RAV1E_DIR/" || exit
-git stash && git stash drop
-git pull
+update_git
 rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
 source "$HOME/.cargo/env" # for good measure
 cargo clean
@@ -120,8 +201,7 @@ sudo cp ./include/* /usr/local/include/ -r || exit
 
 # build aom
 cd "$AOM_DIR/" || exit
-git stash && git stash drop
-git pull
+update_git
 rm -rf build_aom.user
 mkdir build_aom.user
 cd build_aom.user || exit
@@ -135,8 +215,7 @@ sudo make install || exit
 
 # build libvmaf
 cd "$VMAF_DIR/libvmaf" || exit
-git stash && git stash drop
-git pull
+update_git
 python3 -m virtualenv .venv
 source .venv/bin/activate
 rm -rf build.user
@@ -150,8 +229,7 @@ sudo ninja -vC build.user install || exit
 
 # build dav1d
 cd "$DAV1D_DIR" || exit
-git stash && git stash drop
-git pull
+update_git
 rm -rf build.user
 mkdir build.user
 cd build.user || exit
@@ -162,8 +240,7 @@ sudo ninja -vC build.user install || exit
 
 # build opus
 cd "$OPUS_DIR" || exit
-git stash && git stash drop
-git pull
+update_git
 ./autogen.sh || exit
 export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
 ./configure || exit
@@ -224,8 +301,7 @@ sudo ldconfig
 
 # build ffmpeg
 cd "$FFMPEG_DIR/" || exit
-git stash && git stash drop
-git pull
+update_git
 export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
@@ -240,6 +316,7 @@ export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
      --disable-podpages --disable-txtpages || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
+sudo cp ff*_g /usr/local/bin/
 
 # validate encoders
 hash -r
@@ -247,3 +324,4 @@ source ~/.profile
 ffmpeg -encoders 2>&1 | grep "av1"
 ffmpeg -encoders 2>&1 | grep "rkmpp"
 ffmpeg -decoders 2>&1 | grep "rkmpp"
+exit 0
