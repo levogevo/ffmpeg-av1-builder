@@ -90,7 +90,7 @@ fi
 echo "COMP_FLAGS: $COMP_FLAGS"
 
 # set optimization level
-OPT_LVL="1"
+OPT_LVL="3"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
