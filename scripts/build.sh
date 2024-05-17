@@ -64,19 +64,17 @@ X264_DIR="$BASE_DIR/x264"
 X265_DIR="$BASE_DIR/x265"
 VPX_DIR="$BASE_DIR/vpx"
 
+# save options use
+echo "$@" > "$BASE_DIR/.last_opts"
+
 # clone
 git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
-git clone --depth 1 https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
-git clone --depth 1 https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
 git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
 git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
 git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
-git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
-git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
-git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
 
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
@@ -138,6 +136,10 @@ fi
 
 if [[ "$BUILD_PSY" == "true" ]];
 then
+     # clone svt specific repos
+     git clone --depth 1 https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+     git clone --depth 1 https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
+
      # build dovi_tool
      cd "$DOVI_DIR/" || exit
      update_git
@@ -252,7 +254,13 @@ sudo make install || exit
 unset CFLAGS
 
 if [[ "$BUILD_OTHERS" == "true" ]]; then
-     FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"
+
+     # clone other encoder specific repos
+     git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
+     git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
+     git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
+
+     FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"     
      
      # build x264
      cd "$X264_DIR" || exit
