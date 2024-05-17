@@ -229,6 +229,7 @@ make clean
      --disable-podpages --disable-txtpages || exit
 make -j "$(nproc)" || exit
 sudo make install || exit
+sudo cp ff*_g /usr/local/bin/
 
 # validate encoders
 hash -r
