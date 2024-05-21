@@ -1,11 +1,12 @@
 #!/bin/bash
 
 usage() {
-     echo "./scripts/build.sh [-h] [-p] [-o] [-r]"
+     echo "./scripts/build.sh [-h] [-p] [-o] [-r] [-O n]"
      echo -e "\th: display this help output"
      echo -e "\tp: build svt-av1-psy with dovi library"
      echo -e "\to: build other encoders x264/5 and vpx"
      echo -e "\tr: build rockchip media libraries" 
+     echo -e "\tO n: build at optimization n (1, 2, 3)" 
 }
 
 update_git() {
@@ -15,8 +16,8 @@ update_git() {
 }
 
 GREP_FILTER="av1"
-OPTS='hpor'
-NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
+OPTS='hporO:'
+NUM_OPTS=$(echo -n $OPTS | wc -m)
 MIN_OPT=0
 # using all
 MAX_OPT=$(( NUM_OPTS ))
@@ -42,11 +43,36 @@ while getopts "$OPTS" flag; do
                GREP_FILTER+="|rkmpp"
                echo "building rockchip media platform"
                ;;
+        O)
+               if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
+                    echo "${OPTARG} is not a positive integer"
+                    usage
+                    exit 1
+               fi
+               if [[ ${OPTARG} -gt 3 ]]; then
+                    echo "${OPTARG} is greater than 3"
+                    usage
+                    exit 1
+               fi
+               # set optimization level
+               export OPT_LVL="$OPTARG"
+               ;;
         *)
-               echo "building default"
+               echo 'unsupported flag(s)'
+               usage
+               exit 1
                ;;
     esac
 done
+
+# set default optimization level
+if [[ -z $OPT_LVL ]]; then
+     OPT_LVL=3
+fi
+echo "building with O${OPT_LVL}"
+
+# wait a sec for outputs to show
+sleep 1
 
 BASE_DIR=$(pwd)
 SVT_DIR="$BASE_DIR/svt"
@@ -86,9 +112,6 @@ then
   COMP_FLAGS="-mcpu=native"
 fi
 echo "COMP_FLAGS: $COMP_FLAGS"
-
-# set optimization level
-OPT_LVL="3"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"

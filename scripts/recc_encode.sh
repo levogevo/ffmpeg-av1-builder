@@ -66,13 +66,13 @@ get_bitrate_audio() {
 
 
 OPTS='i:p:g:'
-NUM_OPTS=$(echo $OPTS | tr ':' '\n' | wc -l)
+NUM_OPTS=$(echo $OPTS | wc -m)
 PRINT_OUT="false"
 GRAIN=""
 # only using -i
 MIN_OPT=2
 # using all + output name
-MAX_OPT=$(( NUM_OPTS * 2 - 1 ))
+MAX_OPT=$(( NUM_OPTS + 1 ))
 test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
 test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
 while getopts "$OPTS" flag; do
