@@ -320,9 +320,14 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      # build vpx
      cd "$VPX_DIR" || exit
      update_git
+     if [[ "$ARCH" == "x86_64" ]]; then
+          VP_COMP_FLAGS="$COMP_FLAGS";
+     else
+          VP_COMP_FLAGS=""
+     fi
      ./configure --enable-pic --as=yasm \
-          --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
-          --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
+          --extra-cflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
+          --extra-cxxflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
           --disable-examples --disable-docs \
           --enable-better-hw-compatibility \
           --enable-vp9-highbitdepth \

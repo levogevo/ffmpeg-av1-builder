@@ -1,5 +1,11 @@
 #!/bin/bash
 
+has_encoder() {
+    CHECK_ENC="$1"
+    HAS_ENC=$(ffmpeg -encoders 2>&1 | grep "$CHECK_ENC" | grep -v "configuration" > /dev/null; echo $?)
+    return $HAS_ENC
+}
+
 BASE_DIR=$(pwd)
 BENCHMARK_DIR="$BASE_DIR/benchmark"
 DL_DIR="$BENCHMARK_DIR/downloads"
@@ -47,17 +53,15 @@ ENCODER=('librav1e' 'libaom-av1' 'libsvtav1' 'libx264' 'libx265' 'libvpx-vp9')
 PRESET=(2 4 6 8)
 
 # uncomment for quick testing
-CRF=(25)
+# CRF=(25)
 # ENCODER=('libsvtav1')
-# ENCODER=('librav1e')
-# ENCODER=('libaom-av1')
-PRESET=(8)
+# PRESET=(8)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
 CSV="$BENCHMARK_DIR/results.csv"
 rm -rf "$OUTPUT_DIR" && mkdir -p "$OUTPUT_DIR"
-ffmpeg -version | grep -E "version|built|configuration" > "$LOG"
+ffmpeg -version | grep -E "version|built|configuration" | fold -s -w 90 > "$LOG"
 echo "ENCODER,PRESET,CRF,INPUT,TIME_TAKEN,SIZE,PSNR_HVS,CAMBI,FLOAT_MS_SSIM,VMAF" > "$CSV"
 uname -srmpio >> "$LOG"
 CPU_PROD=$(sudo lshw | grep "product" | head -1 | cut -d ':' -f2)
@@ -69,13 +73,16 @@ ldd $(which ffmpeg) > "$LDD_TEXT"
 get_version() {
     cat "$LDD_TEXT" | grep "$1" | cut -d' ' -f3 | xargs readlink
 }
-SVTAV1_VER=$(get_version "libSvtAv1Enc")
-RAV1E_VER=$(get_version "librav1e")
-AOM_VER=$(get_version "libaom")
-VMAF_VER=$(get_version "libvmaf")
-DAV1D_VER=$(get_version "libdav1d")
+LIBRARY_NAMES=("libSvtAv1Enc" "librav1e" "libaom" "libx265" \
+    "libvmaf" "libdav1d" "librockchip_mpp" "libx264" "libvpx")
+LIBRARY_VERSIONS=""
 cd "$BASE_DIR" || exit
-echo -e "$SVTAV1_VER $RAV1E_VER $AOM_VER $VMAF_VER $DAV1D_VER" >> "$LOG"
+for LIBRARY in "${LIBRARY_NAMES[@]}"
+do
+    echo "$LIBRARY"
+    LIBRARY_VERSIONS+="$(get_version "$LIBRARY") "
+done
+echo -e "$LIBRARY_VERSIONS" | fold -s -w 90 >> "$LOG"
 
 power2() { echo "x=l($1)/l(2); scale=0; 2^((x+0.5)/1)" | bc -l; }
 TILES=$(power2 "$THREADS")
@@ -94,28 +101,26 @@ do
 
                 # lib specific params
                 PARAMS=""
-                if [[ "$encoder" == "librav1e" ]]
-                then
+                if ! has_encoder "$encoder"; then
+                    continue
+                fi
+                if [[ "$encoder" == "librav1e" ]]; then
                     test "$crf" -eq 20 && quantizer=50
                     test "$crf" -eq 25 && quantizer=100
                     test "$crf" -eq 30 && quantizer=150
                     PARAMS="-speed $preset -rav1e-params tiles=$TILES:threads=$THREADS:quantizer=$quantizer"
-                elif [[ "$encoder" == "libaom-av1" ]]
-                then
+                elif [[ "$encoder" == "libaom-av1" ]]; then
                     PARAMS="-cpu-used $preset -row-mt 1 -threads $THREADS -crf $crf"
-                elif [[ "$encoder" == "libsvtav1" ]]
-                then
+                elif [[ "$encoder" == "libsvtav1" ]]; then
                     PARAMS="-preset $preset -crf $crf -svtav1-params \
                             scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1"
-                elif [[ ("$encoder" == "libx264") || ("$encoder" == "libx265") ]]
-                then
+                elif [[ ("$encoder" == "libx264") || ("$encoder" == "libx265") ]]; then
                     test "$preset" -eq 2 && preset=veryslow
                     test "$preset" -eq 4 && preset=slower
                     test "$preset" -eq 6 && preset=slower
                     test "$preset" -eq 8 && preset=slow
                     PARAMS="-preset $preset -crf $crf"
-                elif [[ "$encoder" == "libvpx-vp9" ]]
-                then
+                elif [[ "$encoder" == "libvpx-vp9" ]]; then
                     test "$preset" -eq 2 && cpu_used=2
                     test "$preset" -eq 4 && cpu_used=3
                     test "$preset" -eq 6 && cpu_used=4
