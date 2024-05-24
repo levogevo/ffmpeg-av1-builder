@@ -133,9 +133,9 @@ do
                 # encode
                 export TIMEFORMAT=%R
                 FFMPEG_CMD="ffmpeg -i $INPUT_DIR/$input -pix_fmt yuv420p10le -c:v $encoder $PARAMS $OUTPUT"
-                (time $FFMPEG_CMD) |& tee TIME
-                TIME_DIFF="$(cat TIME | tail -n 1)"
-                rm TIME
+                (time $FFMPEG_CMD) |& tee "$BENCHMARK_DIR"/TIME
+                TIME_DIFF="$(cat "$BENCHMARK_DIR"/TIME | tail -n 1)"
+                rm "$BENCHMARK_DIR"/TIME
                 echo -e "\ttime taken: $TIME_DIFF seconds" >> "$LOG"
                 echo -e "\tsize: $(du -h "$OUTPUT" | cut -f1)" >> "$LOG"
                 CSV_LINE="${encoder},${preset},${crf},${input},${TIME_DIFF},$(du "$OUTPUT" | cut -f1)"                
