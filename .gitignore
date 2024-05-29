@@ -13,5 +13,5 @@ rkrga
 x264
 x265*
 googletest
-libvpx
+vpx
 .last_opts

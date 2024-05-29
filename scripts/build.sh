@@ -95,7 +95,7 @@ SVT_PSY_DIR="$BASE_DIR/svt-psy"
 X264_DIR="$BASE_DIR/x264"
 X265_DIR="$BASE_DIR/x265"
 GTEST_DIR="$BASE_DIR/googletest"
-VPX_DIR="$BASE_DIR/libvpx"
+VPX_DIR="$BASE_DIR/vpx"
 
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
@@ -278,6 +278,7 @@ cd "$OPUS_DIR" || exit
 update_git
 ./autogen.sh || exit
 export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
+make clean
 ./configure || exit
 make -j"$(nproc)" || exit
 sudo make install || exit
@@ -296,6 +297,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      # build x264
      cd "$X264_DIR" || exit
      update_git
+     make clean
      ./configure --enable-static --enable-pic \
           --enable-shared --enable-lto \
           --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
@@ -344,13 +346,15 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      else
           VP_COMP_FLAGS=""
      fi
+     make clean
      ./configure --enable-pic \
-          --extra-cflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
-          --extra-cxxflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
+          --extra-cflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
+          --extra-cxxflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
           --disable-examples --disable-docs \
           --enable-better-hw-compatibility \
-          --enable-vp9-highbitdepth \
-          --enable-shared
+          --enable-shared --enable-ccache \
+          --enable-vp8 --enable-vp9 \
+          --enable-vp9-highbitdepth
      make -j"$(nproc)" || exit
      sudo make install || exit
 fi
@@ -364,6 +368,7 @@ sudo ldconfig
 cd "$FFMPEG_DIR/" || exit
 update_git
 export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
+make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
      --enable-libdav1d --enable-libopus \
