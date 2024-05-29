@@ -93,7 +93,8 @@ DOVI_DIR="$BASE_DIR/dovi"
 SVT_PSY_DIR="$BASE_DIR/svt-psy"
 X264_DIR="$BASE_DIR/x264"
 X265_DIR="$BASE_DIR/x265"
-VPX_DIR="$BASE_DIR/vpx"
+GTEST_DIR="$BASE_DIR/googletest"
+VPX_DIR="$BASE_DIR/libvpx"
 
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
@@ -146,7 +147,7 @@ then
                -DBUILD_TEST=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install || exit
 
      # build rga
@@ -199,7 +200,7 @@ then
                -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install
 else
      # build svt-av1
@@ -214,7 +215,7 @@ else
                -DCOVERAGE=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install || exit
 fi
 
@@ -243,7 +244,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
           -DENABLE_TESTS=OFF \
           -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
           -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
-make -j "$(nproc)" || exit
+make -j"$(nproc)" || exit
 sudo make install || exit
 
 # build libvmaf
@@ -277,7 +278,7 @@ update_git
 ./autogen.sh || exit
 export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
 ./configure || exit
-make -j "$(nproc)" || exit
+make -j"$(nproc)" || exit
 sudo make install || exit
 unset CFLAGS
 
@@ -286,7 +287,8 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      # clone other encoder specific repos
      git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
      git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
-     git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
+     git clone --depth 1 https://github.com/google/googletest "$GTEST_DIR"
+     git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
 
      FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"     
      
@@ -296,7 +298,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      ./configure --enable-static --enable-pic \
           --enable-shared --enable-lto \
           --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install || exit
 
      # build x265
@@ -317,11 +319,21 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
                -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
                -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install || exit
      cd "$X265_DIR" || exit
      # revert git
      mv .no_git .git
+
+     # build gtest
+     cd "$GTEST_DIR" || exit
+     update_git
+     rm -rf build
+     mkdir build
+     cd build || exit
+     cmake ../
+     make -j"$(nproc)"
+     sudo make install
 
      # build vpx
      cd "$VPX_DIR" || exit
@@ -338,7 +350,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
           --enable-better-hw-compatibility \
           --enable-vp9-highbitdepth \
           --enable-shared
-     make -j "$(nproc)" || exit
+     make -j"$(nproc)" || exit
      sudo make install || exit
 fi
 
@@ -361,7 +373,7 @@ export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
      --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
      --disable-podpages --disable-txtpages || exit
-make -j "$(nproc)" || exit
+make -j"$(nproc)" || exit
 sudo make install || exit
 sudo cp ff*_g /usr/local/bin/
 
