@@ -325,7 +325,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      else
           VP_COMP_FLAGS=""
      fi
-     ./configure --enable-pic --as=yasm \
+     ./configure --enable-pic \
           --extra-cflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
           --extra-cxxflags="-flto -O${OPT_LVL} $VP_COMP_FLAGS" \
           --disable-examples --disable-docs \
