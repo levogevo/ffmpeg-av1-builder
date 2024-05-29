@@ -9,12 +9,6 @@ usage() {
      echo -e "\tO n: build at optimization n (1, 2, 3)" 
 }
 
-update_git() {
-     git config pull.rebase false
-     git stash && git stash drop
-     git pull
-}
-
 GREP_FILTER="av1"
 OPTS='hporO:'
 NUM_OPTS=$(echo -n $OPTS | wc -m)
@@ -65,6 +59,17 @@ while getopts "$OPTS" flag; do
     esac
 done
 
+update_git() {
+     # don't stash this actual repo
+     CURRENT_REPO="$(basename "$(git rev-parse --show-toplevel)")"
+     if [[ "$CURRENT_REPO" == "ffmpeg-av1-builder" ]]; then 
+          exit 1
+     fi
+     git config pull.rebase false
+     git stash && git stash drop
+     git pull
+}
+
 # set default optimization level
 if [[ -z $OPT_LVL ]]; then
      OPT_LVL=3
@@ -93,15 +98,6 @@ VPX_DIR="$BASE_DIR/vpx"
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
 
-# clone
-git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
-git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
-git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
-git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
-git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
-git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
-git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
-
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
 if [[ "$ARCH" == "x86_64" ]]
@@ -115,6 +111,15 @@ echo "COMP_FLAGS: $COMP_FLAGS"
 
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
+
+# clone
+git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
+git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
+git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
+git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
+git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 
 # rockchip ffmpeg libs
 FFMPEG_ROCKCHIP=""
@@ -296,8 +301,9 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
 
      # build x265
      cd "$X265_DIR" || exit
+     test -d ".no_git" && mv .no_git .git
      test -d ".git" && git stash && git stash drop
-     test -d ".git" && config pull.rebase false
+     test -d ".git" && git config pull.rebase false
      test -d ".git" && git pull
      # x265 is dumb and only generates pkgconfig
      # if git is not there ("release")
