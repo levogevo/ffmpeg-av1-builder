@@ -59,6 +59,7 @@ while getopts "$OPTS" flag; do
     esac
 done
 
+GIT_DEPTH='5'
 update_git() {
      # don't stash this actual repo
      CURRENT_REPO="$(basename "$(git rev-parse --show-toplevel)")"
@@ -114,13 +115,13 @@ echo "COMP_FLAGS: $COMP_FLAGS"
 export PATH="/usr/lib/ccache/:$PATH"
 
 # clone
-git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
-git clone --depth 1 https://github.com/xiph/rav1e "$RAV1E_DIR"
-git clone --depth 1 https://aomedia.googlesource.com/aom "$AOM_DIR"
-git clone --depth 1 https://github.com/Netflix/vmaf "$VMAF_DIR"
-git clone --depth 1 https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
-git clone --depth 1 https://github.com/xiph/opus.git "$OPUS_DIR"
-git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
+git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR"
+git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
+git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
+git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
+git clone --depth "$GIT_DEPTH" https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
 
 # rockchip ffmpeg libs
 FFMPEG_ROCKCHIP=""
@@ -131,9 +132,9 @@ then
      FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
      # clone rockchip specific repos
-     git clone --depth 1 https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
-     git clone --depth=1 -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
-     git clone --depth=1 -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR" 
+     git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+     git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
 
      # build mpp
      cd "$RKMPP_DIR/" || exit
@@ -166,8 +167,8 @@ fi
 if [[ "$BUILD_PSY" == "true" ]];
 then
      # clone svt specific repos
-     git clone --depth 1 https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
-     git clone --depth 1 https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 
      # build dovi_tool
      cd "$DOVI_DIR/" || exit
@@ -285,10 +286,10 @@ unset CFLAGS
 if [[ "$BUILD_OTHERS" == "true" ]]; then
 
      # clone other encoder specific repos
-     git clone --depth 1 https://code.videolan.org/videolan/x264.git "$X264_DIR"
-     git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
-     git clone --depth 1 https://github.com/google/googletest "$GTEST_DIR"
-     git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR"
+     git clone --depth "$GIT_DEPTH" https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
+     git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
 
      FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"     
      
