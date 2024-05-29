@@ -12,5 +12,6 @@ rkmpp
 rkrga
 x264
 x265*
-vpx
+googletest
+libvpx
 .last_opts
