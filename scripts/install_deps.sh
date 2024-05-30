@@ -4,8 +4,8 @@ COMMON_DEP_NAMES="autoconf automake cmake libtool pkg-config bc texinfo \
   wget nasm yasm time python3 meson doxygen xxd jq lshw gnuplot curl \
   clang valgrind ccache gawk"
 
-APT_DEP_NAMES="build-essential git-core g++-12 libass-dev libfreetype6-dev \
-  libsdl2-dev libva-dev libvdpau-dev gcc-12 libvorbis-dev libxcb1-dev \
+APT_DEP_NAMES="build-essential git-core libass-dev libfreetype6-dev \
+  libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev \
   libxcb-shm0-dev libxcb-xfixes0-dev zlib1g-dev libssl-dev ninja-build \
   gobjc++ python3-pip mawk libnuma-dev mediainfo mkvtoolnix libgtest-dev"
 
