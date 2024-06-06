@@ -4,9 +4,10 @@
 # do not take this as a holy grail.
 
 usage() {
-    echo "encode -i input_file [-p true/false] [-g NUM] output_file"
+    echo "encode -i input_file [-p true/false] [-g NUM] [output_file_name]"
     echo -e "\t-p print the command instead of executing it [optional]"
     echo -e "\t-g set film grain for encode [optional]"
+    echo -e "\toutput_file_name if not set, will create at $HOME/ [optional]"
     return 0 
 }
 
