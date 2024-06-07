@@ -121,7 +121,7 @@ git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
-git clone --depth "$GIT_DEPTH" https://git.ffmpeg.org/ffmpeg.git "$FFMPEG_DIR"
+git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 
 # rockchip ffmpeg libs
 FFMPEG_ROCKCHIP=""
