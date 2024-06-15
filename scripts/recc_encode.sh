@@ -17,18 +17,27 @@ encode() {
     UNMAP=$(unmap_streams "$INPUT")
     AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono" -c:a libopus'
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
-    FFMPEG_PARAMS='-y -c:s copy -c:V libsvtav1 -pix_fmt yuv420p10le -crf 25 -preset 3 -g 240'
+    VIDEO_ENCODER="libsvtav1"
+    VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
+    FFMPEG_PARAMS="-y -c:s copy -c:V $VIDEO_ENCODER $VIDEO_PARAMS"
     NL=' \\\n\t'
+
+    FFMPEG_VERSION="$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
+    VIDEO_ENC_VERSION="$(ldd $(which ffmpeg) | grep -i "$VIDEO_ENCODER" | cut -d' ' -f3 | xargs readlink)"
+    AUDIO_ENC_VERSION="$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+    ADD_METADATA="-metadata encoding_params=\"$FFMPEG_VERSION $AUDIO_ENC_VERSION $VIDEO_ENC_VERSION $VIDEO_PARAMS $SVT_PARAMS\""
 
     echo '#!/bin/bash' > "$ENCODE_FILE"
     echo -e ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
         $AUDIO_FORMAT $NL $AUDIO_BITRATE \
+        $ADD_METADATA $NL \
         "$FFMPEG_PARAMS" -dolbyvision 1 -svtav1-params \
         $NL "\"$SVT_PARAMS\" \"$OUTPUT\" ||" $NL \
         ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
         $AUDIO_FORMAT $NL $AUDIO_BITRATE \
+        $ADD_METADATA $NL \
         "$FFMPEG_PARAMS" -svtav1-params \
-        $NL "\"$SVT_PARAMS\" \"$OUTPUT\"" >> "$ENCODE_FILE"        
+        $NL "\"$SVT_PARAMS\" \"$OUTPUT\" || exit 1" >> "$ENCODE_FILE"        
     
     if [[ "$EXT" == "mkv" ]]; then
         echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
