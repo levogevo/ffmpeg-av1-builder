@@ -1,7 +1,35 @@
 #!/bin/bash
 
+usage() {
+    echo "estimate_fg.sh -i input_file"
+    return 0 
+}
+
+OPTS='i:'
+NUM_OPTS="${#OPTS}"
+# only using -i
+MIN_OPT=$NUM_OPTS
+# using all
+MAX_OPT=$NUM_OPTS
+test "$#" -lt "$MIN_OPT" && echo "not enough arguments" && usage && exit 1
+test "$#" -gt "$MAX_OPT" && echo "too many arguments" && usage && exit 1
+while getopts "$OPTS" flag; do
+    case "${flag}" in
+        i)
+            INPUT="${OPTARG}"
+            ;;
+        *)
+            echo "wrong flags given"
+            usage
+            exit 1
+            ;;        
+    esac
+done
+
+test -f "$INPUT" || (echo "file does not exist" && exit 1)
+echo "Estimating film grain for $INPUT" && sleep 2
+
 # global variables
-INPUT="bebop.mkv"
 SEGMENTS=10
 SEGMENT_TIME=3
 DURATION="$(get_duration "$INPUT")"
@@ -71,3 +99,6 @@ encode_segments() {
     clear
     cat "$GRAIN_LOG"
 }
+
+segment_video
+encode_segments

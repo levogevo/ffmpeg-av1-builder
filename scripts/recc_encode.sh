@@ -76,7 +76,7 @@ get_bitrate_audio() {
 
 
 OPTS='i:p:g:'
-NUM_OPTS=$(echo $OPTS | wc -m)
+NUM_OPTS="${#OPTS}"
 PRINT_OUT="false"
 GRAIN=""
 # only using -i
