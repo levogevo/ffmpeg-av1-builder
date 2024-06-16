@@ -185,7 +185,7 @@ then
           --prefix="$DOVI_DIR/ffmpeg_build.user" \
           --libdir="$DOVI_DIR/ffmpeg_build.user"/lib \
           --includedir="$DOVI_DIR/ffmpeg_build.user"/include
-     cd ffmpeg_build.user || exit
+     cd "$DOVI_DIR"/ffmpeg_build.user || exit
      sudo cp ./lib/* /usr/local/lib/ -r || exit
      sudo cp ./include/* /usr/local/include/ -r
 
