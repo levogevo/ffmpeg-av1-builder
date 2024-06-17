@@ -46,7 +46,6 @@ encode() {
     echo "export AUDIO_ENC_VERSION=\"$AUDIO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
     ADD_METADATA="\"encoding_params=\\\"\$FFMPEG_VERSION \$AUDIO_ENC_VERSION \$VIDEO_ENC_VERSION \$VIDEO_PARAMS \$SVT_PARAMS\\\"\""
-    # ADD_METADATA="\"-metadata encoding_params='yes'\""
     echo "export ADD_METADATA=$ADD_METADATA" >> "$ENCODE_FILE"
     
     NL=' \\\n\t'
