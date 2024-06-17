@@ -1,11 +1,13 @@
 #!/bin/bash
 
 usage() {
-     echo "./scripts/build.sh [-h] [-p] [-o] [-r] [-O n]"
+     echo "./scripts/build.sh [-h] [-A] [-s] [-o] [-r] [-O n]"
      echo -e "\th: display this help output"
-     echo -e "\tp: build svt-av1-psy with dovi library"
-     echo -e "\to: build other encoders x264/5 and vpx"
-     echo -e "\tr: build rockchip media libraries" 
+     echo -e "\tA: build all AV1 encoders (default is only svt-av1-psy)"
+     echo -e "\ts: build svt-av1 (default is svt-av1-psy)"
+     echo -e "\to: build other encoders (x264/5 and vpx)"
+     echo -e "\tr: build rockchip media libraries"
+     echo -e "\tv: build libvmaf"
      echo -e "\tO n: build at optimization n (1, 2, 3)" 
 }
 
@@ -26,6 +28,18 @@ while getopts "$OPTS" flag; do
         p)
                export BUILD_PSY="true"
                echo "building psy"
+               ;;
+        A)
+               export BUILD_ALL_AV1="true"
+               echo "building all other av1 encoders"
+               ;;
+        s)
+               export BUILD_SVT="true"
+               echo "building svt-av1"
+               ;;
+        v)
+               export BUILD_VMAF="true"
+               echo "building libvmaf"
                ;;
         o)
                export BUILD_OTHERS="true"
@@ -99,6 +113,9 @@ VPX_DIR="$BASE_DIR/vpx"
 
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
+
+# build with psy as default
+export BUILD_PSY="true"
 
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
@@ -220,47 +237,51 @@ else
      sudo make install || exit
 fi
 
-# build rav1e
-cd "$RAV1E_DIR/" || exit
-update_git
-rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
-source "$HOME/.cargo/env" # for good measure
-cargo clean
-RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
-     --prefix="$(pwd)"/ffmpeg_build.user \
-     --libdir="$(pwd)"/ffmpeg_build.user/lib \
-     --includedir="$(pwd)"/ffmpeg_build.user/include || exit
-cd ffmpeg_build.user || exit
-sudo cp ./lib/* /usr/local/lib/ -r || exit
-sudo cp ./include/* /usr/local/include/ -r || exit
+if [[ "$BUILD_ALL_AV1" == "true" ]]; then
+     # build rav1e
+     cd "$RAV1E_DIR/" || exit
+     update_git
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     source "$HOME/.cargo/env" # for good measure
+     cargo clean
+     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
+          --prefix="$(pwd)"/ffmpeg_build.user \
+          --libdir="$(pwd)"/ffmpeg_build.user/lib \
+          --includedir="$(pwd)"/ffmpeg_build.user/include || exit
+     cd ffmpeg_build.user || exit
+     sudo cp ./lib/* /usr/local/lib/ -r || exit
+     sudo cp ./include/* /usr/local/include/ -r || exit
 
-# build aom
-cd "$AOM_DIR/" || exit
-update_git
-rm -rf build_aom.user
-mkdir build_aom.user
-cd build_aom.user || exit
-make clean
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-          -DENABLE_TESTS=OFF \
-          -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
-          -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
-make -j"$(nproc)" || exit
-sudo make install || exit
+     # build aom
+     cd "$AOM_DIR/" || exit
+     update_git
+     rm -rf build_aom.user
+     mkdir build_aom.user
+     cd build_aom.user || exit
+     make clean
+     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
+               -DENABLE_TESTS=OFF \
+               -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
+               -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
+     make -j"$(nproc)" || exit
+     sudo make install || exit
+fi
 
-# build libvmaf
-cd "$VMAF_DIR/libvmaf" || exit
-update_git
-python3 -m virtualenv .venv
-source .venv/bin/activate
-rm -rf build.user
-mkdir build.user
-cd build.user || exit
-pip install meson
-meson setup ../ build.user --buildtype release -Denable_float=true -Db_lto=true \
-     --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
-ninja -vC build.user || exit
-sudo ninja -vC build.user install || exit
+if [[ "$BUILD_VMAF" == "true" ]]; then
+     # build libvmaf
+     cd "$VMAF_DIR/libvmaf" || exit
+     update_git
+     python3 -m virtualenv .venv
+     source .venv/bin/activate
+     rm -rf build.user
+     mkdir build.user
+     cd build.user || exit
+     pip install meson
+     meson setup ../ build.user --buildtype release -Denable_float=true -Db_lto=true \
+          --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
+     ninja -vC build.user || exit
+     sudo ninja -vC build.user install || exit
+fi
 
 # build dav1d
 cd "$DAV1D_DIR" || exit
