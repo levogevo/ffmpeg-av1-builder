@@ -21,7 +21,7 @@ encode() {
     UNMAP=$(unmap_streams "$INPUT")
     echo "export UNMAP=\"$UNMAP\"" >> "$ENCODE_FILE"
 
-    AUDIO_FORMAT='-af "aformat=channel_layouts=7.1|5.1|stereo|mono" -c:a libopus'
+    AUDIO_FORMAT='-af aformat=channel_layouts=7.1|5.1|stereo|mono -c:a libopus'
     echo "export AUDIO_FORMAT='$AUDIO_FORMAT'" >> "$ENCODE_FILE"
     
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
@@ -51,7 +51,7 @@ encode() {
     
     NL=' \\\n\t'
 
-    echo -e ffmpeg -i \""$INPUT"\" -map 0 $UNMAP \
+    echo -e ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
         \$AUDIO_FORMAT $NL \$AUDIO_BITRATE \
         -metadata \"\$ADD_METADATA\" $NL \
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
