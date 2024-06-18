@@ -4,10 +4,12 @@
 # do not take this as a holy grail.
 
 usage() {
-    echo "encode -i input_file [-p true/false] [-g NUM] [output_file_name]"
+    echo "encode -i input_file [-p true/false] [-g NUM] [output_file_name] [-I] [-U]"
     echo -e "\t-p print the command instead of executing it [optional]"
     echo -e "\t-g set film grain for encode [optional]"
     echo -e "\toutput_file_name if not set, will create at $HOME/ [optional]"
+    echo -e "\t-I Install this as /usr/local/bin/encode [optional]"
+    echo -e "\t-U Uninstall this from /usr/local/bin/encode [optional]"
     return 0 
 }
 
@@ -105,19 +107,37 @@ get_bitrate_audio() {
 }
 
 
-OPTS='i:p:g:'
+OPTS='i:p:g:IU'
 NUM_OPTS="${#OPTS}"
 PRINT_OUT="false"
 GRAIN=""
-# only using -i
-MIN_OPT=2
+# only using -I/U
+MIN_OPT=1
 # using all + output name
 MAX_OPT=$(( NUM_OPTS + 1 ))
 test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
 test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
 while getopts "$OPTS" flag; do
     case "${flag}" in
+        I)
+            echo "attempting install"
+            sudo ln -sf "$(pwd)/scripts/recc_encode.sh" \
+                /usr/local/bin/encode || exit 1
+            echo "succesfull install"
+            exit 0
+            ;;
+        U)
+            echo "attempting uninstall"
+            sudo rm /usr/local/bin/encode || exit 1
+            echo "succesfull uninstall"
+            exit 0
+            ;;
         i)
+            if [[ $# -lt 2 ]]; then            
+                echo "wrong arguments given"
+                usage
+                exit 1
+            fi
             INPUT="${OPTARG}"
             ;;
         p)

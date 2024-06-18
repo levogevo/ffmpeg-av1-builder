@@ -1,21 +1,41 @@
 #!/bin/bash
 
 usage() {
-    echo "estimate_fg.sh -i input_file"
+    echo "estimate_fg.sh -i input_file [-I] [-U]"
+    echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain [optional]"
+    echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain [optional]"
     return 0 
 }
 
-OPTS='i:'
+OPTS='i:IU'
 NUM_OPTS="${#OPTS}"
 # only using -i
-MIN_OPT=$NUM_OPTS
+MIN_OPT=1
 # using all
 MAX_OPT=$NUM_OPTS
 test "$#" -lt "$MIN_OPT" && echo "not enough arguments" && usage && exit 1
 test "$#" -gt "$MAX_OPT" && echo "too many arguments" && usage && exit 1
 while getopts "$OPTS" flag; do
     case "${flag}" in
+        I)
+            echo "attempting install"
+            sudo ln -sf "$(pwd)/scripts/estimate_fg.sh" \
+                /usr/local/bin/estimate-film-grain || exit 1
+            echo "succesfull install"
+            exit 0
+            ;;
+        U)
+            echo "attempting uninstall"
+            sudo rm /usr/local/bin/estimate-film-grain || exit 1
+            echo "succesfull uninstall"
+            exit 0
+            ;;
         i)
+            if [[ $# -lt 2 ]]; then            
+                echo "wrong arguments given"
+                usage
+                exit 1
+            fi
             INPUT="${OPTARG}"
             ;;
         *)
