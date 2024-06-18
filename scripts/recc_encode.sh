@@ -13,9 +13,9 @@ usage() {
 
 encode() {
     ENCODE_FILE="/tmp/encode.sh"
-    echo '#!/bin/bash' > "$ENCODE_FILE"
+    echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}adaptive-film-grain=1:tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")
@@ -36,30 +36,38 @@ encode() {
     FFMPEG_PARAMS="-y -c:s copy -c:V \$VIDEO_ENCODER \$VIDEO_PARAMS"
     echo "export FFMPEG_PARAMS=\"$FFMPEG_PARAMS\"" >> "$ENCODE_FILE"
 
-    FFMPEG_VERSION="$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
+    FFMPEG_VERSION="ffmpeg_version=$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
     echo "export FFMPEG_VERSION=\"$FFMPEG_VERSION\"" >> "$ENCODE_FILE"
 
-    VIDEO_ENC_VERSION="$(ldd $(which ffmpeg) | grep -i "$VIDEO_ENCODER" | cut -d' ' -f3 | xargs readlink)"
+    VIDEO_ENC_VERSION="video_encoder=$(ldd $(which ffmpeg) | grep -i "$VIDEO_ENCODER" | cut -d' ' -f3 | xargs readlink)"
     echo "export VIDEO_ENC_VERSION=\"$VIDEO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
-    AUDIO_ENC_VERSION="$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+    AUDIO_ENC_VERSION="audio_encoder=$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
     echo "export AUDIO_ENC_VERSION=\"$AUDIO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
-    ADD_METADATA="\"encoding_params=\\\"\$FFMPEG_VERSION \$AUDIO_ENC_VERSION \$VIDEO_ENC_VERSION \$VIDEO_PARAMS \$SVT_PARAMS\\\"\""
+    ADD_METADATA="\"encoding_params=\$VIDEO_PARAMS \$SVT_PARAMS\""
     echo "export ADD_METADATA=$ADD_METADATA" >> "$ENCODE_FILE"
     
     NL=' \\\n\t'
+    echo >> "$ENCODE_FILE"
 
     echo -e ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
-        \$AUDIO_FORMAT $NL \$AUDIO_BITRATE \
+        \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
+        -metadata \"\$FFMPEG_VERSION\" \
+        -metadata \"\$VIDEO_ENC_VERSION\" $NL \
+        -metadata \"\$AUDIO_ENC_VERSION\" \
         -metadata \"\$ADD_METADATA\" $NL \
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
         $NL "\"\$SVT_PARAMS\" \"\$OUTPUT\" ||" $NL \
         ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
-        \$AUDIO_FORMAT $NL \$AUDIO_BITRATE \
+        \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
+        -metadata \"\$FFMPEG_VERSION\" \
+        -metadata \"\$VIDEO_ENC_VERSION\" $NL \
+        -metadata \"\$AUDIO_ENC_VERSION\" \
         -metadata \"\$ADD_METADATA\" $NL \
         "\$FFMPEG_PARAMS" -svtav1-params \
         $NL "\"\$SVT_PARAMS\" \"$OUTPUT\" || exit 1 " >> "$ENCODE_FILE"        
+    echo >> "$ENCODE_FILE"
     
     if [[ "$EXT" == "mkv" ]]; then
         echo "mkvpropedit \"$OUTPUT\" --add-track-statistics-tags" >> "$ENCODE_FILE"
@@ -126,7 +134,7 @@ while getopts "$OPTS" flag; do
                 usage
                 exit 1
             fi
-            GRAIN="film-grain=${OPTARG}:film-grain-denoise=1:"
+            GRAIN="film-grain=${OPTARG}:film-grain-denoise=1:adaptive-film-grain=1:"
             ;;
         *)
             echo "wrong flags given"
