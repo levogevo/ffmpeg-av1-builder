@@ -14,8 +14,9 @@ usage() {
 }
 
 encode() {
-    ENCODE_FILE="/tmp/encode.sh"
+    ENCODE_FILE="/tmp/$(basename "$OUTPUT")_encode.sh"
     echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
+    echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
     SVT_PARAMS="${GRAIN}tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
@@ -60,7 +61,7 @@ encode() {
         -metadata \"\$AUDIO_ENC_VERSION\" \
         -metadata \"\$ADD_METADATA\" $NL \
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
-        $NL "\"\$SVT_PARAMS\" \"\$OUTPUT\" ||" $NL \
+        $NL \"\$SVT_PARAMS\" \"\$OUTPUT\" "||" $NL \
         ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
@@ -68,7 +69,7 @@ encode() {
         -metadata \"\$AUDIO_ENC_VERSION\" \
         -metadata \"\$ADD_METADATA\" $NL \
         "\$FFMPEG_PARAMS" -svtav1-params \
-        $NL "\"\$SVT_PARAMS\" \"$OUTPUT\" || exit 1 " >> "$ENCODE_FILE"        
+        $NL "\"\$SVT_PARAMS\" \"\$OUTPUT\" || exit 1 " >> "$ENCODE_FILE"        
     echo >> "$ENCODE_FILE"
     
     if [[ "$EXT" == "mkv" ]]; then

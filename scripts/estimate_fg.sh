@@ -31,7 +31,7 @@ while getopts "$OPTS" flag; do
             exit 0
             ;;
         i)
-            if [[ $# -lt 2 ]]; then            
+            if [[ "$#" -lt 2 ]]; then            
                 echo "wrong arguments given"
                 usage
                 exit 1
@@ -46,8 +46,16 @@ while getopts "$OPTS" flag; do
     esac
 done
 
-test -f "$INPUT" || (echo "file does not exist" && exit 1)
+if [[ ! -f "$INPUT" ]]; then
+    echo "file does not exist"
+    exit 1
+fi
+
 echo "Estimating film grain for $INPUT" && sleep 2
+
+get_duration() {
+    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
+}
 
 # global variables
 SEGMENTS=10
@@ -62,9 +70,6 @@ TEST_MAX_GRAIN=30
 GRAIN_STEP=5
 GRAIN_LOG="grain_log.txt"
 
-get_duration() {
-    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
-}
 
 segment_video() {
     # set number of segments and start times
@@ -101,7 +106,6 @@ segment_video() {
 
 encode_segments() {
     cd "$SEGMENT_DIR" || exit
-    clear
     echo > "$GRAIN_LOG"
     for VIDEO in $(ls segment*.mkv)
     do
@@ -116,7 +120,6 @@ encode_segments() {
         echo >> "$GRAIN_LOG"
     done
 
-    clear
     cat "$GRAIN_LOG"
 }
 
