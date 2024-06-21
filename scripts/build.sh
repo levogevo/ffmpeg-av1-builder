@@ -209,7 +209,7 @@ then
      # build svt-avt-psy
      cd "$SVT_PSY_DIR/" || exit
      update_git
-     rm -rf build_svt.user
+     sudo rm -rf build_svt.user
      mkdir build_svt.user
      cd build_svt.user || exit
      make clean
@@ -388,7 +388,7 @@ sudo ldconfig
 # build ffmpeg
 cd "$FFMPEG_DIR/" || exit
 update_git
-export PKG_CONFIG_PATH+=":$(pkg-config --variable pc_path pkg-config)"
+export PKG_CONFIG_PATH+="/usr/local/lib/pkgconfig/"
 make clean
 ./configure --enable-libsvtav1 --enable-librav1e \
      --enable-libaom --enable-libvmaf \
