@@ -131,6 +131,9 @@ echo "COMP_FLAGS: $COMP_FLAGS"
 # for ccache
 export PATH="/usr/lib/ccache/:$PATH"
 
+# options for ffmpeg configure
+FFMPEG_CONFIGURE_OPT=""
+
 # clone
 git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR"
@@ -141,11 +144,10 @@ git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 
 # rockchip ffmpeg libs
-FFMPEG_ROCKCHIP=""
 # IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$BUILD_ROCKCHIP" == "true" ]]
 then
-     FFMPEG_ROCKCHIP="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+     FFMPEG_CONFIGURE_OPT+="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
      FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
      # clone rockchip specific repos
@@ -238,6 +240,8 @@ else
 fi
 
 if [[ "$BUILD_ALL_AV1" == "true" ]]; then
+     FFMPEG_CONFIGURE_OPT+="--enable-libaom --enable-librav1e"
+
      # build rav1e
      cd "$RAV1E_DIR/" || exit
      update_git
@@ -268,6 +272,8 @@ if [[ "$BUILD_ALL_AV1" == "true" ]]; then
 fi
 
 if [[ "$BUILD_VMAF" == "true" ]]; then
+     FFMPEG_CONFIGURE_OPT+="--enable-libvmaf"
+
      # build libvmaf
      cd "$VMAF_DIR/libvmaf" || exit
      update_git
@@ -306,14 +312,13 @@ sudo make install || exit
 unset CFLAGS
 
 if [[ "$BUILD_OTHERS" == "true" ]]; then
-
      # clone other encoder specific repos
      git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR"
      git clone --depth "$GIT_DEPTH" https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
      git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
      git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
 
-     FFMPEG_OTHERS="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"     
+     FFMPEG_CONFIGURE_OPT+="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"
      
      # build x264
      cd "$X264_DIR" || exit
@@ -390,12 +395,11 @@ cd "$FFMPEG_DIR/" || exit
 update_git
 export PKG_CONFIG_PATH+="/usr/local/lib/pkgconfig/"
 make clean
-./configure --enable-libsvtav1 --enable-librav1e \
-     --enable-libaom --enable-libvmaf \
+./configure --enable-libsvtav1  \
      --enable-libdav1d --enable-libopus \
-     $FFMPEG_OTHERS \
+     $FFMPEG_CONFIGURE_OPT \
      --arch="$ARCH" --cpu=native \
-     --enable-lto $FFMPEG_ROCKCHIP \
+     --enable-lto \
      --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
      --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \
