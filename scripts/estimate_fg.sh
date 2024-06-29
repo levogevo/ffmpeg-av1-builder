@@ -1,15 +1,27 @@
 #!/bin/bash
 
 usage() {
-    echo "estimate_fg.sh -i input_file [-I] [-U]"
+    echo "estimate_fg.sh -i input_file [-l NUM] [-s NUM] [-h NUM] [-I] [-U]"
+    echo -e "\t-l low value to use as minimum film-grain [optional]"
+    echo -e "\t-I step value to use increment from low to high film-grain [optional]"
+    echo -e "\t-I high value to use as maximum film-grain [optional]"
     echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain [optional]"
     echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain [optional]"
     return 0 
 }
 
-OPTS='i:IU'
+check_not_negative_optarg() {
+    OPTARG="$1"
+    if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
+        echo "${OPTARG} is not a positive integer"
+        usage
+        exit 1
+    fi
+}
+
+OPTS='l:s:h:i:IU'
 NUM_OPTS="${#OPTS}"
-# only using -i
+# only using -I or -U
 MIN_OPT=1
 # using all
 MAX_OPT=$NUM_OPTS
@@ -38,6 +50,18 @@ while getopts "$OPTS" flag; do
             fi
             INPUT="${OPTARG}"
             ;;
+        l)
+            check_not_negative_optarg "${OPTARG}"
+            LOW_GRAIN="${OPTARG}"
+            ;;
+        s)
+            check_not_negative_optarg "${OPTARG}"
+            STEP_GRAIN="${OPTARG}"
+            ;;
+        h)
+            check_not_negative_optarg "${OPTARG}"
+            HIGH_GRAIN="${OPTARG}"
+            ;;
         *)
             echo "wrong flags given"
             usage
@@ -51,25 +75,27 @@ if [[ ! -f "$INPUT" ]]; then
     exit 1
 fi
 
-echo "Estimating film grain for $INPUT" && sleep 2
+# set default values
+test ! -n "$LOW_GRAIN" && LOW_GRAIN=0
+test ! -n "$STEP_GRAIN" && STEP_GRAIN=5
+test ! -n "$HIGH_GRAIN" && HIGH_GRAIN=30
+
+echo "Estimating film grain for $INPUT"
+echo -e "\tTesting grain from $LOW_GRAIN-$HIGH_GRAIN with $STEP_GRAIN increments" && sleep 2
 
 get_duration() {
     ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
 }
 
 # global variables
-SEGMENTS=10
-SEGMENT_TIME=3
+SEGMENTS=8
+SEGMENT_TIME=2
 DURATION="$(get_duration "$INPUT")"
 TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
 SEGMENT_DIR='/tmp/fg_segments'
 SEGMENTS_LIST="$SEGMENT_DIR/segments_list.txt"
 OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
-TEST_MIN_GRAIN=0
-TEST_MAX_GRAIN=30
-GRAIN_STEP=5
 GRAIN_LOG="grain_log.txt"
-
 
 segment_video() {
     # set number of segments and start times
@@ -110,7 +136,7 @@ encode_segments() {
     for VIDEO in $(ls segment*.mkv)
     do
         echo "$VIDEO" >> "$GRAIN_LOG"
-        for GRAIN in $(seq $TEST_MIN_GRAIN $GRAIN_STEP $TEST_MAX_GRAIN)
+        for GRAIN in $(seq $LOW_GRAIN $STEP_GRAIN $HIGH_GRAIN)
         do
             OUTPUT_VIDEO="encoded_$VIDEO"
             encode -i "$VIDEO" -g $GRAIN "$OUTPUT_VIDEO"
