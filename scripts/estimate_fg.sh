@@ -3,8 +3,8 @@
 usage() {
     echo "estimate_fg.sh -i input_file [-l NUM] [-s NUM] [-h NUM] [-I] [-U]"
     echo -e "\t-l low value to use as minimum film-grain [optional]"
-    echo -e "\t-I step value to use increment from low to high film-grain [optional]"
-    echo -e "\t-I high value to use as maximum film-grain [optional]"
+    echo -e "\t-s step value to use increment from low to high film-grain [optional]"
+    echo -e "\t-h high value to use as maximum film-grain [optional]"
     echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain [optional]"
     echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain [optional]"
     return 0 
@@ -81,7 +81,7 @@ test ! -n "$STEP_GRAIN" && STEP_GRAIN=5
 test ! -n "$HIGH_GRAIN" && HIGH_GRAIN=30
 
 echo "Estimating film grain for $INPUT"
-echo -e "\tTesting grain from $LOW_GRAIN-$HIGH_GRAIN with $STEP_GRAIN increments" && sleep 2
+echo -e "\tTesting grain from $LOW_GRAIN-$HIGH_GRAIN with $STEP_GRAIN step increments" && sleep 2
 
 get_duration() {
     ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
