@@ -11,6 +11,8 @@ usage() {
      echo -e "\tO n: build at optimization n (1, 2, 3)" 
 }
 
+# build with psy as default
+export BUILD_PSY="true"
 GREP_FILTER="av1"
 OPTS='hporO:'
 NUM_OPTS=$(echo -n $OPTS | wc -m)
@@ -35,6 +37,7 @@ while getopts "$OPTS" flag; do
                ;;
         s)
                export BUILD_SVT="true"
+               export BUILD_PSY="false"
                echo "building svt-av1"
                ;;
         v)
@@ -105,6 +108,7 @@ OPUS_DIR="$BASE_DIR/opus"
 RKMPP_DIR="$BASE_DIR/rkmpp"
 RKRGA_DIR="$BASE_DIR/rkrga"
 DOVI_DIR="$BASE_DIR/dovi"
+HDR10_DIR="$BASE_DIR/hdr10plus"
 SVT_PSY_DIR="$BASE_DIR/svt-psy"
 X264_DIR="$BASE_DIR/x264"
 X265_DIR="$BASE_DIR/x265"
@@ -113,9 +117,6 @@ VPX_DIR="$BASE_DIR/vpx"
 
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
-
-# build with psy as default
-export BUILD_PSY="true"
 
 export ARCH=$(uname -m)
 export COMP_FLAGS=""
@@ -147,7 +148,7 @@ git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 # IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$BUILD_ROCKCHIP" == "true" ]]
 then
-     FFMPEG_CONFIGURE_OPT+="--enable-gpl --enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+     FFMPEG_CONFIGURE_OPT+="--enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
      FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
      # clone rockchip specific repos
@@ -187,6 +188,7 @@ if [[ "$BUILD_PSY" == "true" ]];
 then
      # clone svt specific repos
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
      git clone --depth "$GIT_DEPTH" https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 
      # build dovi_tool
@@ -208,6 +210,25 @@ then
      sudo cp ./lib/* /usr/local/lib/ -r || exit
      sudo cp ./include/* /usr/local/include/ -r
 
+     # build hdr10plus_tool
+     cd "$HDR10_DIR/" || exit
+     update_git
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     source "$HOME/.cargo/env" # for good measure
+     cargo clean
+     RUSTFLAGS="-C target-cpu=native" cargo build --release
+     sudo cp target/release/hdr10plus_tool /usr/local/bin/ || exit
+
+     # build libhdr10plus
+     cd hdr10plus || exit
+     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
+          --prefix="$HDR10_DIR/ffmpeg_build.user" \
+          --libdir="$HDR10_DIR/ffmpeg_build.user"/lib \
+          --includedir="$HDR10_DIR/ffmpeg_build.user"/include
+     cd "$HDR10_DIR"/ffmpeg_build.user || exit
+     sudo cp ./lib/* /usr/local/lib/ -r || exit
+     sudo cp ./include/* /usr/local/include/ -r
+
      # build svt-avt-psy
      cd "$SVT_PSY_DIR/" || exit
      update_git
@@ -218,6 +239,7 @@ then
      cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
                -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
+               -DLIBHDR10PLUS_RS_FOUND=1 \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
      make -j"$(nproc)" || exit
@@ -318,7 +340,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
      git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
 
-     FFMPEG_CONFIGURE_OPT+="--enable-gpl --enable-libx264 --enable-libx265 --enable-libvpx"
+     FFMPEG_CONFIGURE_OPT+="--enable-libx264 --enable-libx265 --enable-libvpx"
      
      # build x264
      cd "$X264_DIR" || exit
@@ -399,7 +421,7 @@ make clean
      --enable-libdav1d --enable-libopus \
      $FFMPEG_CONFIGURE_OPT \
      --arch="$ARCH" --cpu=native \
-     --enable-lto \
+     --enable-lto --enable-gpl \
      --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" \
      --extra-cxxflags="-O${OPT_LVL} $COMP_FLAGS" \
      --disable-doc --disable-htmlpages \

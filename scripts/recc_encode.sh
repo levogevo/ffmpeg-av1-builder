@@ -3,6 +3,11 @@
 # this is simply my recommended encoding method.
 # do not take this as a holy grail.
 
+# global path variables
+SCRIPT_PATH="$(readlink "$(which "$0")")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
+
 usage() {
     echo "encode -i input_file [-p true/false] [-g NUM] [output_file_name] [-I] [-U]"
     echo -e "\t-p print the command instead of executing it [optional]"
@@ -33,6 +38,9 @@ encode() {
     VIDEO_ENCODER="libsvtav1"
     echo "export VIDEO_ENCODER=\"$VIDEO_ENCODER\"" >> "$ENCODE_FILE"
 
+    VIDEO_CROP="-vf \"$(ffmpeg -i "$INPUT" -t 1 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1)\""
+    echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
+
     VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
     echo "export VIDEO_PARAMS=\"$VIDEO_PARAMS\"" >> "$ENCODE_FILE"
 
@@ -46,6 +54,7 @@ encode() {
     echo "export VIDEO_ENC_VERSION=\"$VIDEO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
     AUDIO_ENC_VERSION="audio_encoder=$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+    AUDIO_ENC_VERSION+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
     echo "export AUDIO_ENC_VERSION=\"$AUDIO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
     ADD_METADATA="\"encoding_params=\$VIDEO_PARAMS \$SVT_PARAMS\""
@@ -55,6 +64,7 @@ encode() {
     echo >> "$ENCODE_FILE"
 
     echo -e ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
+        \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
         -metadata \"\$VIDEO_ENC_VERSION\" $NL \
@@ -63,6 +73,7 @@ encode() {
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
         $NL \"\$SVT_PARAMS\" \"\$OUTPUT\" "||" $NL \
         ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
+        \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
         -metadata \"\$VIDEO_ENC_VERSION\" $NL \
