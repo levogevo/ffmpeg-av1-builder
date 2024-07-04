@@ -42,7 +42,7 @@ encode() {
     FFMPEG_VERSION="ffmpeg_version=$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
     echo "export FFMPEG_VERSION=\"$FFMPEG_VERSION\"" >> "$ENCODE_FILE"
 
-    VIDEO_ENC_VERSION="video_encoder=$(ldd $(which ffmpeg) | grep -i "$VIDEO_ENCODER" | cut -d' ' -f3 | xargs readlink)"
+    VIDEO_ENC_VERSION="video_encoder=$(SvtAv1EncApp --version | head -n 1)"
     echo "export VIDEO_ENC_VERSION=\"$VIDEO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
     AUDIO_ENC_VERSION="audio_encoder=$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
