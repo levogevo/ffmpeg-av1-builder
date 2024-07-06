@@ -18,6 +18,21 @@ usage() {
     return 0 
 }
 
+get_duration() {
+    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
+}
+
+get_crop() {
+    DURATION="$(get_duration "$INPUT")"
+    TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
+    # get cropdetect value for first 1/5 of input
+    TIME_ENC="$(echo "$TOTAL_SECONDS / 5" | bc)"
+    ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
+        -map '0:v:0' -filter:v:0 'cropdetect=limit=24:round=16:skip=2:reset_count=0' \
+        -codec:v 'wrapped_avframe' -f 'null' '/dev/null' -y 2>&1 | grep -o crop=.* \
+        | sort -bh | uniq -c | sort -bh | tail -n1 | grep -o "crop=.*"
+}
+
 encode() {
     ENCODE_FILE="/tmp/$(basename "$OUTPUT")_encode.sh"
     echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
@@ -38,7 +53,7 @@ encode() {
     VIDEO_ENCODER="libsvtav1"
     echo "export VIDEO_ENCODER=\"$VIDEO_ENCODER\"" >> "$ENCODE_FILE"
 
-    VIDEO_CROP="-vf \"$(ffmpeg -i "$INPUT" -t 1 -vf cropdetect -f null - 2>&1 | awk '/crop/ { print $NF }' | tail -1)\""
+    VIDEO_CROP="-vf \"$(get_crop)\""
     echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
 
     VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
@@ -63,8 +78,8 @@ encode() {
     NL=' \\\n\t'
     echo >> "$ENCODE_FILE"
 
-    echo -e ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
-        \$VIDEO_CROP \
+    echo -e ffmpeg -i \""$INPUT"\" $NL \
+        -map 0 \$UNMAP \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
         -metadata \"\$VIDEO_ENC_VERSION\" $NL \
@@ -72,8 +87,8 @@ encode() {
         -metadata \"\$ADD_METADATA\" $NL \
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
         $NL \"\$SVT_PARAMS\" \"\$OUTPUT\" "||" $NL \
-        ffmpeg -i \""$INPUT"\" -map 0 \$UNMAP \
-        \$VIDEO_CROP \
+        ffmpeg -i \""$INPUT"\" $NL \
+        -map 0 \$UNMAP \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
         -metadata \"\$VIDEO_ENC_VERSION\" $NL \
