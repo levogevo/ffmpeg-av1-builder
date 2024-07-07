@@ -9,8 +9,9 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "encode -i input_file [-p true/false] [-g NUM] [output_file_name] [-I] [-U]"
+    echo "encode -i input_file [-p true/false] [-c true/false] [-g NUM] [output_file_name] [-I] [-U]"
     echo -e "\t-p print the command instead of executing it [optional]"
+    echo -e "\t-c use cropdetect [default=true, optional]"
     echo -e "\t-g set film grain for encode [optional]"
     echo -e "\toutput_file_name if not set, will create at $HOME/ [optional]"
     echo -e "\t-I Install this as /usr/local/bin/encode [optional]"
@@ -53,8 +54,10 @@ encode() {
     VIDEO_ENCODER="libsvtav1"
     echo "export VIDEO_ENCODER=\"$VIDEO_ENCODER\"" >> "$ENCODE_FILE"
 
-    VIDEO_CROP="-vf \"$(get_crop)\""
-    echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
+    if [[ "$CROP" == "true" ]]; then
+        VIDEO_CROP="-vf \"$(get_crop)\""
+        echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
+    fi
 
     VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
     echo "export VIDEO_PARAMS=\"$VIDEO_PARAMS\"" >> "$ENCODE_FILE"
@@ -134,7 +137,7 @@ get_bitrate_audio() {
 }
 
 
-OPTS='i:p:g:IU'
+OPTS='i:p:c:g:IU'
 NUM_OPTS="${#OPTS}"
 PRINT_OUT="false"
 GRAIN=""
@@ -144,6 +147,8 @@ MIN_OPT=1
 MAX_OPT=$(( NUM_OPTS + 1 ))
 test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
 test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
+# default crop value
+CROP='true'
 while getopts "$OPTS" flag; do
     case "${flag}" in
         I)
@@ -171,6 +176,14 @@ while getopts "$OPTS" flag; do
             PRINT_OUT="${OPTARG}"
             if [[ "$PRINT_OUT" != "false" && "$PRINT_OUT" != "true" ]]; then
                 echo "unrecognized argument for -p: $PRINT_OUT"
+                usage
+                exit 1
+            fi
+            ;;
+        c)
+            CROP="${OPTARG}"
+            if [[ "$CROP" != "false" && "$CROP" != "true" ]]; then
+                echo "unrecognized argument for -c: $CROP"
                 usage
                 exit 1
             fi
