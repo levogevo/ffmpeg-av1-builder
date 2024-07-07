@@ -19,6 +19,8 @@ check_not_negative_optarg() {
     fi
 }
 
+echoerr() { echo -e "$@" 1>&2; }
+
 OPTS='l:s:h:i:IU'
 NUM_OPTS="${#OPTS}"
 # only using -I or -U
@@ -83,15 +85,40 @@ test ! -n "$HIGH_GRAIN" && HIGH_GRAIN=30
 echo "Estimating film grain for $INPUT"
 echo -e "\tTesting grain from $LOW_GRAIN-$HIGH_GRAIN with $STEP_GRAIN step increments" && sleep 2
 
+# get time in seconds
 get_duration() {
-    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
+    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d , \
+        | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }'
+}
+
+get_avg_bitrate() {
+    ffprobe -select_streams v:0 "$1" 2>&1 | grep " bitrate: " | cut -d' ' -f8
+}
+
+# check if test bitrate is within 12% of target bitrate
+check_bitrate_bounds() {
+    TEST_BITRATE="$1"
+    TARGET_BITRATE="$2"
+    TARGET_DELTA="$(echo "$TARGET_BITRATE * .12" | bc)"
+    DIFF_BITRATE=$((TEST_BITRATE - TARGET_BITRATE))
+    DIFF_BITRATE="$(echo ${DIFF_BITRATE#-})"
+    echoerr "TEST_BITRATE:\t$TEST_BITRATE"
+    echoerr "TARGET_BITRATE:\t$TARGET_BITRATE"
+    echoerr "TARGET_DELTA:\t$TARGET_DELTA"
+    echoerr "DIFF_BITRATE:\t$DIFF_BITRATE"
+    if [[ "$DIFF_BITRATE" < "$TARGET_DELTA" ]]; then
+        echo "pass"
+    else
+        echo "fail"
+    fi
 }
 
 # global variables
-SEGMENTS=8
-SEGMENT_TIME=2
-DURATION="$(get_duration "$INPUT")"
-TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
+SEGMENTS=15
+SEGMENT_TIME=4
+MAX_SEGMENTS=6
+TOTAL_SECONDS="$(get_duration "$INPUT")"
+INPUT_BITRATE="$(get_avg_bitrate "$INPUT")"
 SEGMENT_DIR='/tmp/fg_segments'
 SEGMENTS_LIST="$SEGMENT_DIR/segments_list.txt"
 OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
@@ -112,11 +139,16 @@ segment_video() {
     # split up video into segments based on start times
     rm -rf "$SEGMENT_DIR"
     mkdir -p "$SEGMENT_DIR"
+    NUM_SEGMENTS=0
     for INDEX in "${!START_TIMES[@]}"
     do
         # don't concatenate the last segment
         if [[ $((INDEX + 1)) == "${#START_TIMES[@]}" ]]; then
             break
+        fi
+        # only encode the max number of segments
+        if [[ $NUM_SEGMENTS == "$MAX_SEGMENTS" ]]; then
+            return 0
         fi
         START_TIME="${START_TIMES[$INDEX]}"
         OUTPUT_SEGMENT="$SEGMENT_DIR/segment_$INDEX.mkv"
@@ -124,7 +156,17 @@ segment_video() {
         ffmpeg -ss "$START_TIME" -i "$INPUT" \
             -hide_banner -loglevel error -t "$SEGMENT_TIME" \
             -map 0:0 -reset_timestamps 1 -c copy "$OUTPUT_SEGMENT"
-        echo "file '$(basename "$OUTPUT_SEGMENT")'" >> "$SEGMENTS_LIST"
+        OUTPUT_SEGMENT_BITRATE="$(get_avg_bitrate "$OUTPUT_SEGMENT")"
+        echo "comparing: $OUTPUT_SEGMENT_BITRATE vs $INPUT_BITRATE"
+        CHECK_BOUNDS="$(check_bitrate_bounds "$OUTPUT_SEGMENT_BITRATE" "$INPUT_BITRATE")"
+        if [[ "$CHECK_BOUNDS" == "pass" ]]; then
+            echo "$OUTPUT_SEGMENT is within bitrate bounds"
+            echo "file '$(basename "$OUTPUT_SEGMENT")'" >> "$SEGMENTS_LIST"
+            NUM_SEGMENTS=$((NUM_SEGMENTS + 1))
+        else
+            echo "$OUTPUT_SEGMENT is not within bitrate bounds"
+            rm "$OUTPUT_SEGMENT"
+        fi
     done
     
     # ffmpeg -f concat -safe 0 -i "$SEGMENTS_LIST" -hide_banner -loglevel error -c copy "$OUTPUT_CONCAT"
@@ -132,13 +174,14 @@ segment_video() {
 
 encode_segments() {
     cd "$SEGMENT_DIR" || exit
+    mkdir ./encoded || exit
     echo > "$GRAIN_LOG"
     for VIDEO in $(ls segment*.mkv)
     do
         echo "$VIDEO" >> "$GRAIN_LOG"
         for GRAIN in $(seq $LOW_GRAIN $STEP_GRAIN $HIGH_GRAIN)
         do
-            OUTPUT_VIDEO="encoded_$VIDEO"
+            OUTPUT_VIDEO="encoded/encoded_$VIDEO"
             encode -i "$VIDEO" -g $GRAIN -c "false" "$OUTPUT_VIDEO"
             BITRATE="$(mediainfo "$OUTPUT_VIDEO" | tr -s ' ' | grep 'Bit rate : ' | cut -d':' -f2)"
             echo -e "\tgrain: $GRAIN, bitrate:$BITRATE" >> "$GRAIN_LOG"
@@ -149,5 +192,6 @@ encode_segments() {
     cat "$GRAIN_LOG"
 }
 
+get_avg_bitrate "$INPUT"
 segment_video
 encode_segments
