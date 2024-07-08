@@ -9,9 +9,10 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "encode -i input_file [-p true/false] [-c true/false] [-g NUM] [output_file_name] [-I] [-U]"
+    echo "encode -i input_file [-p -c -s true/false] [-g NUM] [output_file_name] [-I] [-U]"
     echo -e "\t-p print the command instead of executing it [optional]"
     echo -e "\t-c use cropdetect [default=true, optional]"
+    echo -e "\t-s use same container as input [default is always mkv, optional]"
     echo -e "\t-g set film grain for encode [optional]"
     echo -e "\toutput_file_name if not set, will create at $HOME/ [optional]"
     echo -e "\t-I Install this as /usr/local/bin/encode [optional]"
@@ -34,12 +35,34 @@ get_crop() {
         | sort -bh | uniq -c | sort -bh | tail -n1 | grep -o "crop=.*"
 }
 
+unmap_streams(){
+    INPUT="$1"
+    UNMAP_FILTER="bin_data|jpeg|png"
+    UNMAP_STREAMS=$(ffprobe "$INPUT" 2>&1 | grep "Stream" | grep -Ei "$UNMAP_FILTER" | cut -d':' -f2 | cut -d'[' -f1 | tr '\n' ' ')
+    UNMAP_CMD=""
+    for UNMAP_STREAM in $UNMAP_STREAMS; do
+        UNMAP_CMD+="-map -0:$UNMAP_STREAM "
+    done
+    echo "$UNMAP_CMD"
+}
+
+get_bitrate_audio() {
+    BITRATE_CMD=""
+    NUM_AUDIO_STREAMS=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
+    for ((i = 0; i < NUM_AUDIO_STREAMS; i++)); do
+        NUM_CHANNELS=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
+        BITRATE=$((NUM_CHANNELS * 64))
+        BITRATE_CMD+="-b:a:$i ${BITRATE}k "
+    done
+    echo "$BITRATE_CMD"
+}
+
 encode() {
     ENCODE_FILE="/tmp/$(basename "$OUTPUT")_encode.sh"
     echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}sharpness=2:tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}sharpness=3:tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")
@@ -114,32 +137,10 @@ encode() {
     fi
 }
 
-unmap_streams(){
-    INPUT="$1"
-    UNMAP_FILTER="jpeg|png"
-    UNMAP_STREAMS=$(ffprobe "$INPUT" 2>&1 | grep "Stream" | grep -Ei "$UNMAP_FILTER" | cut -d':' -f2 | tr '\n' ' ')
-    UNMAP_CMD=""
-    for UNMAP_STREAM in $UNMAP_STREAMS; do
-        UNMAP_CMD+="-map -0:$UNMAP_STREAM "
-    done
-    echo "$UNMAP_CMD"
-}
-
-get_bitrate_audio() {
-    BITRATE_CMD=""
-    NUM_AUDIO_STREAMS=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
-    for ((i = 0; i < NUM_AUDIO_STREAMS; i++)); do
-        NUM_CHANNELS=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
-        BITRATE=$((NUM_CHANNELS * 64))
-        BITRATE_CMD+="-b:a:$i ${BITRATE}k "
-    done
-    echo "$BITRATE_CMD"
-}
-
-
-OPTS='i:p:c:g:IU'
+OPTS='i:p:c:s:g:IU'
 NUM_OPTS="${#OPTS}"
 PRINT_OUT="false"
+SAME_CONTAINER="false"
 GRAIN=""
 # only using -I/U
 MIN_OPT=1
@@ -188,6 +189,14 @@ while getopts "$OPTS" flag; do
                 exit 1
             fi
             ;;
+        s)
+            SAME_CONTAINER="${OPTARG}"
+            if [[ "$SAME_CONTAINER" != "false" && "$SAME_CONTAINER" != "true" ]]; then
+                echo "unrecognized argument for -c: $SAME_CONTAINER"
+                usage
+                exit 1
+            fi
+            ;;
         g)
             if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
                 echo "${OPTARG} is not a positive integer"
@@ -211,11 +220,17 @@ else
     OUTPUT="${HOME}/av1_${INPUT}"
 fi
 
-# always use same container for output
-INP_FILENAME=$(basename -- "$INPUT")
-EXT="${INP_FILENAME##*.}"
-OUTPUT="${OUTPUT%.*}"
-OUTPUT+=".${EXT}"
+# use same container for output
+if [[ "$SAME_CONTAINER" == "true" ]]; then
+    INP_FILENAME=$(basename -- "$INPUT")
+    EXT="${INP_FILENAME##*.}"
+    OUTPUT="${OUTPUT%.*}"
+    OUTPUT+=".${EXT}"
+else
+    EXT="mkv"
+    OUTPUT="${OUTPUT%.*}"
+    OUTPUT+=".${EXT}"
+fi
 
 echo
 echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, GRAIN: $GRAIN, OUTPUT: $OUTPUT"
