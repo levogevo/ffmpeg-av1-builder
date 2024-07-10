@@ -130,7 +130,7 @@ fi
 echo "COMP_FLAGS: $COMP_FLAGS"
 
 # for ccache
-export PATH="/usr/lib/ccache/:$PATH"
+export PATH="/usr/lib/ccache:$PATH"
 
 # options for ffmpeg configure
 FFMPEG_CONFIGURE_OPT=""
@@ -207,6 +207,7 @@ then
           --libdir="$DOVI_DIR/ffmpeg_build.user"/lib \
           --includedir="$DOVI_DIR/ffmpeg_build.user"/include
      cd "$DOVI_DIR"/ffmpeg_build.user || exit
+     sudo rm /usr/local/include/libdovi /usr/local/lib/libdovi.*
      sudo cp ./lib/* /usr/local/lib/ -r || exit
      sudo cp ./include/* /usr/local/include/ -r
 
@@ -226,6 +227,7 @@ then
           --libdir="$HDR10_DIR/ffmpeg_build.user"/lib \
           --includedir="$HDR10_DIR/ffmpeg_build.user"/include
      cd "$HDR10_DIR"/ffmpeg_build.user || exit
+     sudo rm /usr/local/include/libhdr10plus-rs /usr/local/lib/libhdr10plus-rs.*
      sudo cp ./lib/* /usr/local/lib/ -r || exit
      sudo cp ./include/* /usr/local/include/ -r
 
@@ -275,6 +277,7 @@ if [[ "$BUILD_ALL_AV1" == "true" ]]; then
           --libdir="$(pwd)"/ffmpeg_build.user/lib \
           --includedir="$(pwd)"/ffmpeg_build.user/include || exit
      cd ffmpeg_build.user || exit
+     sudo rm /usr/local/include/rav1e /usr/local/lib/librav1e.*
      sudo cp ./lib/* /usr/local/lib/ -r || exit
      sudo cp ./include/* /usr/local/include/ -r || exit
 

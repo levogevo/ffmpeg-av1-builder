@@ -5,7 +5,7 @@ COMMON_DEP_NAMES="autoconf automake cmake libtool pkg-config bc texinfo \
   clang valgrind ccache gawk"
 
 APT_DEP_NAMES="build-essential git-core libass-dev libfreetype6-dev \
-  libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev \
+  libsdl2-dev libva-dev libvdpau-dev libvorbis-dev libxcb1-dev mold \
   libxcb-shm0-dev libxcb-xfixes0-dev zlib1g-dev libssl-dev ninja-build \
   gobjc++ python3-pip mawk libnuma-dev mediainfo mkvtoolnix libgtest-dev"
 
