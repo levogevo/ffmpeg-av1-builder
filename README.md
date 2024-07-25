@@ -5,7 +5,7 @@ This repository is a simple collection of bash scripts. Scripts have only been t
 
 1. Install required dependencies using `./scripts/install_deps.sh`
 2. Build and install ffmpeg from source using `./scripts/build.sh`
-3. Install an encoding script using `./scripts/recc_encode_install.sh`
+3. Install an encoding script using `./scripts/recc_encode_install.sh -I`
 4. Benchmark the different encoders using `./scripts/benchmark.sh`
 
 ## Encode script
@@ -21,10 +21,14 @@ The installation of the encoding script creates a symlink to this repo's `./scri
 Read the specifics in the actual file : `./scripts/recc_encode.sh`
 
 ```
-encode -i input_file [-p true/false] [-g NUM] [output_file_name]
+encode -i input_file [-p -c -s true/false] [-g NUM] [output_file_name] [-I] [-U]
         -p print the command instead of executing it [optional]
+        -c use cropdetect [default=false, optional]
+        -s use same container as input [default=false, always mkv, optional]
         -g set film grain for encode [optional]
-        output_file_name if not set, will create at $HOME/ [optional]
+        output_file_name if not set, will create at /home/lgevorgyan/ [optional]
+        -I Install this as /usr/local/bin/encode [optional]
+        -U Uninstall this from /usr/local/bin/encode [optional]
 ```
 Example usage: 
  - `encode -i input.mkv output.mkv` standard usage
