@@ -9,14 +9,15 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "encode -i input_file [-p -c -s true/false] [-g NUM] [output_file_name] [-I] [-U]"
-    echo -e "\t-p print the command instead of executing it [optional]"
-    echo -e "\t-c use cropdetect [default=false, optional]"
-    echo -e "\t-s use same container as input [default=false, always mkv, optional]"
-    echo -e "\t-g set film grain for encode [optional]"
-    echo -e "\toutput_file_name if not set, will create at $HOME/ [optional]"
-    echo -e "\t-I Install this as /usr/local/bin/encode [optional]"
-    echo -e "\t-U Uninstall this from /usr/local/bin/encode [optional]"
+    echo "encode -i input_file [-p -c -s true/false] [-g NUM] [output_file_name] [-I] [-U] [-v]"
+    echo -e "\t-p print the command instead of executing it"
+    echo -e "\t-c use cropdetect [default=false]"
+    echo -e "\t-s use same container as input [default=false, always mkv]"
+    echo -e "\t-g set film grain for encode"
+    echo -e "\n\toutput_file_name if not set, will create at $HOME/\n"
+    echo -e "\t-I Install this as /usr/local/bin/encode"
+    echo -e "\t-U Uninstall this from /usr/local/bin/encode"
+    echo -e "\t-v Print relevant version info"
     return 0 
 }
 
@@ -94,7 +95,7 @@ encode() {
     VIDEO_ENC_VERSION="video_encoder=$(SvtAv1EncApp --version | head -n 1)"
     echo "export VIDEO_ENC_VERSION=\"$VIDEO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
-    AUDIO_ENC_VERSION="audio_encoder=$(ldd $(which ffmpeg) | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+    AUDIO_ENC_VERSION="audio_encoder=$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
     AUDIO_ENC_VERSION+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
     echo "export AUDIO_ENC_VERSION=\"$AUDIO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
@@ -137,7 +138,7 @@ encode() {
     fi
 }
 
-OPTS='i:p:c:s:g:IU'
+OPTS='vi:p:c:s:g:IU'
 NUM_OPTS="${#OPTS}"
 PRINT_OUT="false"
 SAME_CONTAINER="false"
@@ -163,6 +164,18 @@ while getopts "$OPTS" flag; do
             echo "attempting uninstall"
             sudo rm /usr/local/bin/encode || exit 1
             echo "succesfull uninstall"
+            exit 0
+            ;;
+        v)
+            SCRIPT_VER="$(cd "$BUILDER_DIR" && git rev-parse --short HEAD)"
+            FFMPEG_VER="$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
+            SVTAV1_VER="$(SvtAv1EncApp --version | head -n 1)"
+            LIBOPUS_VER="$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+            LIBOPUS_VER+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
+            echo "encode version: $SCRIPT_VER"
+            echo "ffmpeg version: $FFMPEG_VER"
+            echo "svtav1 version: $SVTAV1_VER"
+            echo "libopus version: $LIBOPUS_VER"
             exit 0
             ;;
         i)
