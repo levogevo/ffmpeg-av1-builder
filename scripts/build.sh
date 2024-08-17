@@ -14,7 +14,7 @@ usage() {
 # build with psy as default
 export BUILD_PSY="true"
 GREP_FILTER="av1"
-OPTS='hporO:'
+OPTS='hAsvorO:'
 NUM_OPTS=$(echo -n $OPTS | wc -m)
 MIN_OPT=0
 # using all
@@ -148,7 +148,7 @@ git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 # IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
 if [[ "$BUILD_ROCKCHIP" == "true" ]]
 then
-     FFMPEG_CONFIGURE_OPT+="--enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga"
+     FFMPEG_CONFIGURE_OPT+="--enable-version3 --enable-libdrm --enable-rkmpp --enable-rkrga "
      FFMPEG_DIR="$BASE_DIR/ffmpeg-rkmpp"
 
      # clone rockchip specific repos
@@ -264,7 +264,7 @@ else
 fi
 
 if [[ "$BUILD_ALL_AV1" == "true" ]]; then
-     FFMPEG_CONFIGURE_OPT+="--enable-libaom --enable-librav1e"
+     FFMPEG_CONFIGURE_OPT+="--enable-libaom --enable-librav1e "
 
      # build rav1e
      cd "$RAV1E_DIR/" || exit
@@ -297,7 +297,7 @@ if [[ "$BUILD_ALL_AV1" == "true" ]]; then
 fi
 
 if [[ "$BUILD_VMAF" == "true" ]]; then
-     FFMPEG_CONFIGURE_OPT+="--enable-libvmaf"
+     FFMPEG_CONFIGURE_OPT+="--enable-libvmaf "
 
      # build libvmaf
      cd "$VMAF_DIR/libvmaf" || exit
@@ -343,7 +343,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
      git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
 
-     FFMPEG_CONFIGURE_OPT+="--enable-libx264 --enable-libx265 --enable-libvpx"
+     FFMPEG_CONFIGURE_OPT+="--enable-libx264 --enable-libx265 --enable-libvpx "
      
      # build x264
      cd "$X264_DIR" || exit
