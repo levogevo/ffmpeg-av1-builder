@@ -63,7 +63,7 @@ encode() {
     echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}sharpness=3:tune=3:enable-overlays=1:scd=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}sharpness=3:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")

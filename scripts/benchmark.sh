@@ -24,6 +24,13 @@ URL_DL[3]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH
 INPUT[4]='D_2.mp4'
 URL_DL[4]='http://download.opencontent.netflix.com.s3.amazonaws.com/AV1/DVB-DASH/D_2.mp4'
 
+# check for libvmaf
+if [[ "$(ffmpeg 2>&1 | grep 'enable-libvmaf' ; echo $?)" == 1 ]]; then
+    echo "libvmaf not found"
+    echo "add -v flag to build.sh"
+    exit 1
+fi
+
 # download videos
 mkdir -p "$DL_DIR"
 for index in "${!INPUT[@]}"
@@ -53,9 +60,9 @@ ENCODER=('librav1e' 'libaom-av1' 'libsvtav1' 'libx264' 'libx265' 'libvpx-vp9')
 PRESET=(2 4 6 8)
 
 # uncomment for quick testing
-# CRF=(25)
+CRF=(25)
 # ENCODER=('libsvtav1')
-# PRESET=(8)
+PRESET=(8)
 
 # Log for results
 LOG="$BENCHMARK_DIR/results.txt"
@@ -113,7 +120,7 @@ do
                     PARAMS="-cpu-used $preset -row-mt 1 -threads $THREADS -crf $crf"
                 elif [[ "$encoder" == "libsvtav1" ]]; then
                     PARAMS="-preset $preset -crf $crf -svtav1-params \
-                            scd=1:tune=0:enable-overlays=1:enable-hdr=1:fast-decode=1:enable-variance-boost=1"
+                            scd=1:tune=0:enable-overlays=1:fast-decode=1:enable-variance-boost=1"
                 elif [[ ("$encoder" == "libx264") || ("$encoder" == "libx265") ]]; then
                     test "$preset" -eq 2 && preset=veryslow
                     test "$preset" -eq 4 && preset=slower
@@ -125,7 +132,7 @@ do
                     test "$preset" -eq 4 && cpu_used=3
                     test "$preset" -eq 6 && cpu_used=4
                     test "$preset" -eq 8 && cpu_used=5
-                    PARAMS="-cpu-used $cpu_used -crf $crf -row-mt 1 -deadline 0 -quality 0"
+                    PARAMS="-cpu-used $cpu_used -crf $crf -b:v 0 -row-mt 1 -deadline 0 -quality 0"
                 else
                     PARAMS=""
                 fi
