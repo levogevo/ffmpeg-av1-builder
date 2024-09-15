@@ -189,6 +189,8 @@ then
      # clone svt specific repos
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
+     # clear svt because of unrelated histories error
+     rm -rf "$SVT_PSY_DIR"
      git clone --depth "$GIT_DEPTH" https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
 
      # build dovi_tool
