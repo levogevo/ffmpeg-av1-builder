@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# global path variables
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$BUILDER_DIR" || exit
+
 git stash
 git stash drop
 git pull

@@ -11,6 +11,12 @@ usage() {
      echo -e "\tO n: build at optimization n (1, 2, 3)" 
 }
 
+# global path variables
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
+cd "$BUILDER_DIR" || exit
+
 # build with psy as default
 export BUILD_PSY="true"
 GREP_FILTER="av1"
