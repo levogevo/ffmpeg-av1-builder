@@ -186,8 +186,7 @@ then
      update_git
      rm -rf rga_build.user
      mkdir rga_build.user
-     cd rga_build.user || exit
-     meson setup ../ rga_build.user --buildtype release -Db_lto=true \
+     meson setup . rga_build.user --buildtype release -Db_lto=true \
      --default-library=shared -Dlibdrm=false -Dlibrga_demo=false --prefix "$PREFIX" \
      --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
      ninja -vC rga_build.user || exit
@@ -320,9 +319,8 @@ if [[ "$BUILD_VMAF" == "true" ]]; then
      source .venv/bin/activate
      rm -rf build.user
      mkdir build.user
-     cd build.user || exit
      pip install meson
-     meson setup ../ build.user --buildtype release -Denable_float=true \
+     meson setup . build.user --buildtype release -Denable_float=true \
           -Db_lto=true --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" \
           --prefix "$PREFIX" -Dcpp_args="$COMP_FLAGS" || exit
      ninja -vC build.user || exit
@@ -334,8 +332,7 @@ cd "$DAV1D_DIR" || exit
 update_git
 rm -rf build.user
 mkdir build.user
-cd build.user || exit
-meson setup ../ build.user --buildtype release -Db_lto=true --prefix "$PREFIX" \
+meson setup . build.user --buildtype release -Db_lto=true --prefix "$PREFIX" \
      --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
@@ -427,7 +424,7 @@ fi
 
 # ldconfig for shared libs
 sudo mkdir /etc/ld.so.conf.d/
-echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
+echo -e "/usr/local/lib\n/usr/local/lib/$(gcc -dumpmachine)" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
 sudo ldconfig
 
 # build ffmpeg
