@@ -4,7 +4,7 @@
 # do not take this as a holy grail.
 
 # global path variables
-SCRIPT_PATH="$(readlink "$(which "$0")")"
+SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
