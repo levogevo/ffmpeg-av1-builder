@@ -427,7 +427,7 @@ sudo ldconfig
 cd "$FFMPEG_DIR/" || exit
 update_git
 export PKG_CONFIG_PATH+="/usr/local/lib/pkgconfig/"
-export LD_PRELOAD="/usr/local/lib:$LD_PRELOAD"
+export LD_PRELOAD="$(ls /usr/local/lib/*.so | tr '\n' ':')$LD_PRELOAD"
 make clean
 ./configure --enable-libsvtav1  \
      --enable-libdav1d --enable-libopus \
