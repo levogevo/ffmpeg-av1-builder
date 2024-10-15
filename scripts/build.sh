@@ -138,6 +138,9 @@ echo "COMP_FLAGS: $COMP_FLAGS"
 # for ccache
 export PATH="/usr/lib/ccache:$PATH"
 
+# prefix to install
+PREFIX='/usr/local'
+
 # options for ffmpeg configure
 FFMPEG_CONFIGURE_OPT=""
 
@@ -170,6 +173,7 @@ then
      cd mpp_build.user || exit
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release \
+               -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DBUILD_SHARED_LIBS=ON \
                -DBUILD_TEST=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
@@ -184,7 +188,7 @@ then
      mkdir rga_build.user
      cd rga_build.user || exit
      meson setup ../ rga_build.user --buildtype release -Db_lto=true \
-     --default-library=shared -Dlibdrm=false -Dlibrga_demo=false \
+     --default-library=shared -Dlibdrm=false -Dlibrga_demo=false --prefix "$PREFIX" \
      --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
      ninja -vC rga_build.user || exit
      sudo ninja -vC rga_build.user install || exit
@@ -247,6 +251,7 @@ then
      cd build_svt.user || exit
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
                -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
                -DLIBHDR10PLUS_RS_FOUND=1 \
@@ -263,6 +268,7 @@ else
      cd build_svt.user || exit
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
+               -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
                -DCOVERAGE=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
@@ -297,7 +303,7 @@ if [[ "$BUILD_ALL_AV1" == "true" ]]; then
      cd build_aom.user || exit
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-               -DENABLE_TESTS=OFF \
+               -DENABLE_TESTS=OFF -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
      make -j"$(nproc)" || exit
@@ -316,8 +322,9 @@ if [[ "$BUILD_VMAF" == "true" ]]; then
      mkdir build.user
      cd build.user || exit
      pip install meson
-     meson setup ../ build.user --buildtype release -Denable_float=true -Db_lto=true \
-          --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
+     meson setup ../ build.user --buildtype release -Denable_float=true \
+          -Db_lto=true --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" \
+          --prefix "$PREFIX" -Dcpp_args="$COMP_FLAGS" || exit
      ninja -vC build.user || exit
      sudo ninja -vC build.user install || exit
 fi
@@ -328,7 +335,7 @@ update_git
 rm -rf build.user
 mkdir build.user
 cd build.user || exit
-meson setup ../ build.user --buildtype release -Db_lto=true \
+meson setup ../ build.user --buildtype release -Db_lto=true --prefix "$PREFIX" \
      --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
 ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
@@ -339,7 +346,7 @@ update_git
 ./autogen.sh || exit
 export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
 make clean
-./configure || exit
+./configure --prefix="$PREFIX" || exit
 make -j"$(nproc)" || exit
 sudo make install || exit
 unset CFLAGS
@@ -358,7 +365,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      update_git
      make clean
      ./configure --enable-static --enable-pic \
-          --enable-shared --enable-lto \
+          --enable-shared --enable-lto --prefix="$PREFIX" \
           --extra-cflags="-O${OPT_LVL} $COMP_FLAGS" || exit
      make -j"$(nproc)" || exit
      sudo make install || exit
@@ -377,7 +384,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      cd build.user || exit
      cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
                -G "Unix Makefiles" -DHIGH_BIT_DEPTH=ON \
-               -DENABLE_HDR10_PLUS=ON \
+               -DENABLE_HDR10_PLUS=ON -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
                -DCMAKE_C_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-flto -O${OPT_LVL} $COMP_FLAGS" || exit
@@ -393,7 +400,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      rm -rf build
      mkdir build
      cd build || exit
-     cmake ../
+     cmake -DCMAKE_INSTALL_RPEFIX="$PREFIX" ../
      make -j"$(nproc)"
      sudo make install
 
@@ -406,7 +413,7 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
           VP_COMP_FLAGS=""
      fi
      make clean
-     ./configure --enable-pic \
+     ./configure --enable-pic --prefix="$PREFIX" \
           --extra-cflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
           --extra-cxxflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
           --disable-examples --disable-docs \
@@ -420,7 +427,7 @@ fi
 
 # ldconfig for shared libs
 sudo mkdir /etc/ld.so.conf.d/
-echo -e "/usr/local/lib\n/usr/local/lib/x86_64-linux-gnu" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
+echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
 sudo ldconfig
 
 # build ffmpeg
@@ -428,7 +435,7 @@ cd "$FFMPEG_DIR/" || exit
 update_git
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
-./configure --enable-libsvtav1  \
+./configure --enable-libsvtav1 --prefix="$PREFIX" \
      --enable-libdav1d --enable-libopus \
      $FFMPEG_CONFIGURE_OPT \
      --arch="$ARCH" --cpu=native \
