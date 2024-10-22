@@ -9,15 +9,15 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "encode -i input_file [-p -c -s true/false] [-g NUM] [output_file_name] [-I] [-U] [-v]"
+    echo "encode -i input_file [-p] [-c] [-s] [-v] [-g NUM] [output_file_name] [-I] [-U] "
     echo -e "\t-p print the command instead of executing it"
-    echo -e "\t-c use cropdetect [default=false]"
-    echo -e "\t-s use same container as input [default=false, always mkv]"
+    echo -e "\t-c use cropdetect"
+    echo -e "\t-s use same container as input, default is mkv"
     echo -e "\t-g set film grain for encode"
+    echo -e "\t-v Print relevant version info"
     echo -e "\n\toutput_file_name if not set, will create at $HOME/\n"
     echo -e "\t-I Install this as /usr/local/bin/encode"
     echo -e "\t-U Uninstall this from /usr/local/bin/encode"
-    echo -e "\t-v Print relevant version info"
     return 0 
 }
 
@@ -138,8 +138,10 @@ encode() {
     fi
 }
 
-OPTS='vi:p:c:s:g:IU'
+OPTS='vi:pcsg:IU'
 NUM_OPTS="${#OPTS}"
+# default values
+CROP='false'
 PRINT_OUT="false"
 SAME_CONTAINER="false"
 GRAIN=""
@@ -149,8 +151,7 @@ MIN_OPT=1
 MAX_OPT=$(( NUM_OPTS + 1 ))
 test "$#" -lt $MIN_OPT && echo "not enough arguments" && usage && exit 1
 test "$#" -gt $MAX_OPT && echo "too many arguments" && usage && exit 1
-# default crop value
-CROP='false'
+OPTS_USED=0
 while getopts "$OPTS" flag; do
     case "${flag}" in
         I)
@@ -168,7 +169,7 @@ while getopts "$OPTS" flag; do
             ;;
         v)
             SCRIPT_VER="$(cd "$BUILDER_DIR" && git rev-parse --short HEAD)"
-            FFMPEG_VER="$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
+            FFMPEG_VER="$(ffmpeg -version 2>&1 | head -n 1 | grep version | cut -d' ' -f1-3)"
             SVTAV1_VER="$(SvtAv1EncApp --version | head -n 1)"
             LIBOPUS_VER="$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
             LIBOPUS_VER+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
@@ -185,30 +186,19 @@ while getopts "$OPTS" flag; do
                 exit 1
             fi
             INPUT="${OPTARG}"
+            OPTS_USED=$((OPTS_USED + 2))
             ;;
         p)
-            PRINT_OUT="${OPTARG}"
-            if [[ "$PRINT_OUT" != "false" && "$PRINT_OUT" != "true" ]]; then
-                echo "unrecognized argument for -p: $PRINT_OUT"
-                usage
-                exit 1
-            fi
+            PRINT_OUT="true"
+            OPTS_USED=$((OPTS_USED + 1))
             ;;
         c)
-            CROP="${OPTARG}"
-            if [[ "$CROP" != "false" && "$CROP" != "true" ]]; then
-                echo "unrecognized argument for -c: $CROP"
-                usage
-                exit 1
-            fi
+            CROP="true"
+            OPTS_USED=$((OPTS_USED + 1))
             ;;
         s)
-            SAME_CONTAINER="${OPTARG}"
-            if [[ "$SAME_CONTAINER" != "false" && "$SAME_CONTAINER" != "true" ]]; then
-                echo "unrecognized argument for -c: $SAME_CONTAINER"
-                usage
-                exit 1
-            fi
+            SAME_CONTAINER="true"
+            OPTS_USED=$((OPTS_USED + 1))
             ;;
         g)
             if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
@@ -217,6 +207,7 @@ while getopts "$OPTS" flag; do
                 exit 1
             fi
             GRAIN="film-grain=${OPTARG}:film-grain-denoise=1:adaptive-film-grain=1:"
+            OPTS_USED=$((OPTS_USED + 2))
             ;;
         *)
             echo "wrong flags given"
@@ -227,16 +218,25 @@ while getopts "$OPTS" flag; do
 done
 
 # allow optional output filename
-if [[ $(($# % 2)) != 0 ]]; then
-    OUTPUT="${@: -1}"
+if [[ $(($# - OPTS_USED)) == 1 ]]; then
+    OUTPUT="${*: -1}"
 else
     OUTPUT="${HOME}/av1_${INPUT}"
 fi
 
 # use same container for output
 if [[ "$SAME_CONTAINER" == "true" ]]; then
-    INP_FILENAME=$(basename -- "$INPUT")
-    EXT="${INP_FILENAME##*.}"
+
+    INP_FORMAT="$(mediainfo --Output="General;%Format%" "$INPUT")"
+    EXT=""
+    if [[ "$INP_FORMAT" == 'MPEG-4' ]]; then
+        EXT='mp4'
+    elif [[ "$INP_FORMAT" == 'Matroska' ]]; then
+        EXT='mkv'
+    else
+        echo "unrecognized input format"
+        exit 1
+    fi
     OUTPUT="${OUTPUT%.*}"
     OUTPUT+=".${EXT}"
 else
