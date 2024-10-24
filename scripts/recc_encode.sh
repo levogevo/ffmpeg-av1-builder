@@ -58,6 +58,16 @@ get_bitrate_audio() {
     echo "$BITRATE_CMD"
 }
 
+convert_subs() {
+    SUB_CONVERT_CMD=""
+    NUM_SUBTITLE_STREAMS=$(ffprobe -v error -select_streams s -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
+    for ((i = 0; i < NUM_SUBTITLE_STREAMS; i++)); do
+        SUBTITLE_FORMAT=$(ffprobe -v error -select_streams "s:$i" -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$INPUT")
+        test "$SUBTITLE_FORMAT" == "eia_608" && SUB_CONVERT_CMD+="-c:s:$i srt "
+    done
+    echo "$SUB_CONVERT_CMD"
+}
+
 encode() {
     ENCODE_FILE="/tmp/$(basename "$OUTPUT")_encode.sh"
     echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
@@ -86,7 +96,10 @@ encode() {
     VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
     echo "export VIDEO_PARAMS=\"$VIDEO_PARAMS\"" >> "$ENCODE_FILE"
 
-    FFMPEG_PARAMS="-y -c:s copy -c:V \$VIDEO_ENCODER \$VIDEO_PARAMS"
+    CONVERT_SUBS="$(convert_subs)"
+    echo "export CONVERT_SUBS=\"$CONVERT_SUBS\"" >> "$ENCODE_FILE"
+
+    FFMPEG_PARAMS="-y -c:s copy \$CONVERT_SUBS -c:V \$VIDEO_ENCODER \$VIDEO_PARAMS"
     echo "export FFMPEG_PARAMS=\"$FFMPEG_PARAMS\"" >> "$ENCODE_FILE"
 
     FFMPEG_VERSION="ffmpeg_version=$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
