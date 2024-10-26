@@ -182,7 +182,7 @@ encode_segments() {
         for GRAIN in $(seq $LOW_GRAIN $STEP_GRAIN $HIGH_GRAIN)
         do
             OUTPUT_VIDEO="encoded/encoded_$VIDEO"
-            encode -i "$VIDEO" -g $GRAIN -c "false" "$OUTPUT_VIDEO"
+            encode -i "$VIDEO" -g $GRAIN "$OUTPUT_VIDEO"
             BITRATE="$(mediainfo "$OUTPUT_VIDEO" | tr -s ' ' | grep 'Bit rate : ' | cut -d':' -f2)"
             echo -e "\tgrain: $GRAIN, bitrate:$BITRATE" >> "$GRAIN_LOG"
         done
