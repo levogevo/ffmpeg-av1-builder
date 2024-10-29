@@ -99,7 +99,7 @@ get_avg_bitrate() {
 check_bitrate_bounds() {
     TEST_BITRATE="$1"
     TARGET_BITRATE="$2"
-    TARGET_DELTA="$(echo "$TARGET_BITRATE * .30" | bc)"
+    TARGET_DELTA="$(echo "$TARGET_BITRATE * .60" | bc)"
     DIFF_BITRATE=$((TEST_BITRATE - TARGET_BITRATE))
     DIFF_BITRATE="$(echo ${DIFF_BITRATE#-})"
     echoerr "TEST_BITRATE:\t$TEST_BITRATE"
