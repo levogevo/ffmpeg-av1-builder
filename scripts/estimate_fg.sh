@@ -1,12 +1,13 @@
 #!/bin/bash
 
 usage() {
-    echo "estimate_fg.sh -i input_file [-l NUM] [-s NUM] [-h NUM] [-I] [-U]"
-    echo -e "\t-l low value to use as minimum film-grain [optional]"
-    echo -e "\t-s step value to use increment from low to high film-grain [optional]"
-    echo -e "\t-h high value to use as maximum film-grain [optional]"
-    echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain [optional]"
-    echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain [optional]"
+    echo "estimate_fg.sh -i input_file [-o output_file] [-l NUM] [-s NUM] [-h NUM] [-I] [-U]"
+    echo -e "\t-o file to output results to"
+    echo -e "\t-l low value to use as minimum film-grain"
+    echo -e "\t-s step value to use increment from low to high film-grain"
+    echo -e "\t-h high value to use as maximum film-grain"
+    echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain"
+    echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain"
     return 0 
 }
 
@@ -21,12 +22,13 @@ check_not_negative_optarg() {
 
 echoerr() { echo -e "$@" 1>&2; }
 
-OPTS='l:s:h:i:IU'
+OPTS='o:l:s:h:i:IU'
 NUM_OPTS="${#OPTS}"
 # only using -I or -U
 MIN_OPT=1
 # using all
 MAX_OPT=$NUM_OPTS
+CALLING_DIR="$(pwd)"
 test "$#" -lt "$MIN_OPT" && echo "not enough arguments" && usage && exit 1
 test "$#" -gt "$MAX_OPT" && echo "too many arguments" && usage && exit 1
 while getopts "$OPTS" flag; do
@@ -45,12 +47,15 @@ while getopts "$OPTS" flag; do
             exit 0
             ;;
         i)
-            if [[ "$#" -lt 2 ]]; then            
-                echo "wrong arguments given"
+            if [[ ! -f "${OPTARG}" ]]; then            
+                echo "${OPTARG} does not exist"
                 usage
                 exit 1
             fi
             INPUT="${OPTARG}"
+            ;;
+        o)
+            OUTPUT_FILE="${OPTARG}"
             ;;
         l)
             check_not_negative_optarg "${OPTARG}"
@@ -71,11 +76,6 @@ while getopts "$OPTS" flag; do
             ;;        
     esac
 done
-
-if [[ ! -f "$INPUT" ]]; then
-    echo "file does not exist"
-    exit 1
-fi
 
 # set default values
 test ! -n "$LOW_GRAIN" && LOW_GRAIN=0
@@ -172,6 +172,12 @@ segment_video() {
     # ffmpeg -f concat -safe 0 -i "$SEGMENTS_LIST" -hide_banner -loglevel error -c copy "$OUTPUT_CONCAT"
 }
 
+get_output_bitrate() {
+    INPUT="$1"
+    BPS="$(ffprobe "$INPUT" 2>&1 | grep BPS | grep -v 'TAGS' | tr -d ' ' | cut -d':' -f2)"
+    echo "scale=3;$BPS / 1000000" | bc -l
+}
+
 encode_segments() {
     cd "$SEGMENT_DIR" || exit
     mkdir ./encoded || exit
@@ -183,13 +189,15 @@ encode_segments() {
         do
             OUTPUT_VIDEO="encoded/encoded_$VIDEO"
             encode -i "$VIDEO" -g $GRAIN "$OUTPUT_VIDEO"
-            BITRATE="$(mediainfo "$OUTPUT_VIDEO" | tr -s ' ' | grep 'Bit rate : ' | cut -d':' -f2)"
-            echo -e "\tgrain: $GRAIN, bitrate:$BITRATE" >> "$GRAIN_LOG"
+            BITRATE="$(get_output_bitrate "$OUTPUT_VIDEO")"
+            echo -e "\tgrain: $GRAIN, bitrate: $BITRATE" >> "$GRAIN_LOG"
         done
         echo >> "$GRAIN_LOG"
     done
 
-    cat "$GRAIN_LOG"
+    test -n "$OUTPUT_FILE" && cp "$GRAIN_LOG" "$CALLING_DIR/$OUTPUT_FILE"
+    less "$GRAIN_LOG"
+
 }
 
 get_avg_bitrate "$INPUT"
