@@ -22,17 +22,17 @@ The installation of the encoding script creates a symlink to this repo's `./scri
 Read the specifics in the actual file : `./scripts/recc_encode.sh`
 
 ```bash
-encode -i input_file [-p] [-c] [-s] [-v] [-g NUM] [output_file_name] [-I] [-U]
-        -p print the command instead of executing it
-        -c use cropdetect
-        -s use same container as input, default is mkv
-        -g set film grain for encode
-        -v Print relevant version info
+encode -i input_file [options] 
+        [-p] print the command instead of executing it
+        [-c] use cropdetect
+        [-s] use same container as input, default is mkv
+        [-v] Print relevant version info
+        [-g NUM] set film grain for encode
 
-        output_file_name if not set, will create at /home/lgevorgyan/
+        [output_file] if not set, will create at $HOME/
 
-        -I Install this as /usr/local/bin/encode
-        -U Uninstall this from /usr/local/bin/encode
+        [-I] Install this as /usr/local/bin/encode
+        [-U] Uninstall this from /usr/local/bin/encode
 ```
 Example usage: 
  - `encode -i input.mkv output.mkv` standard usage
@@ -43,13 +43,15 @@ Example usage:
 ## Estimate film grain script
 The installation of the script creates a symlink to this repo's `./scripts/estimate_fg.sh` so do NOT remove this repo or the functionality of `estimate-film-grain` will FAIL. The `estimate-film-grain` script is a way to estimate the ideal film grain of a video by encoding it at different film grain values and observing at what point does a higher film grain value result in diminishing returns.
 ```bash
-estimate_fg.sh -i input_file [-o output_file] [-l NUM] [-s NUM] [-h NUM] [-I] [-U]
-        -o file to output results to
-        -l low value to use as minimum film-grain
-        -s step value to use increment from low to high film-grain
-        -h high value to use as maximum film-grain
-        -I Install this as /usr/local/bin/estimate-film-grain
-        -U Uninstall this from /usr/local/bin/estimate-film-grain
+estimate-film-grain -i input_file [options]
+        [-o output_file] file to output results to
+        [-l NUM] low value to use as minimum film-grain
+        [-s NUM] step value to use increment from low to high film-grain
+        [-h NUM] high value to use as maximum film-grain
+        [-p] plot bitrates using gnuplot
+
+        [-I] Install this as /usr/local/bin/estimate-film-grain
+        [-U] Uninstall this from /usr/local/bin/estimate-film-grain
 ```
 
 ## Benchmark script

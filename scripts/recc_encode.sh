@@ -9,15 +9,15 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
 
 usage() {
-    echo "encode -i input_file [-p] [-c] [-s] [-v] [-g NUM] [output_file_name] [-I] [-U] "
-    echo -e "\t-p print the command instead of executing it"
-    echo -e "\t-c use cropdetect"
-    echo -e "\t-s use same container as input, default is mkv"
-    echo -e "\t-g set film grain for encode"
-    echo -e "\t-v Print relevant version info"
-    echo -e "\n\toutput_file_name if not set, will create at $HOME/\n"
-    echo -e "\t-I Install this as /usr/local/bin/encode"
-    echo -e "\t-U Uninstall this from /usr/local/bin/encode"
+    echo "$(basename "$0") -i input_file [options] "
+    echo -e "\t[-p] print the command instead of executing it"
+    echo -e "\t[-c] use cropdetect"
+    echo -e "\t[-s] use same container as input, default is mkv"
+    echo -e "\t[-v] Print relevant version info"
+    echo -e "\t[-g NUM] set film grain for encode"
+    echo -e "\n\t[output_file] if not set, will create at $HOME/"
+    echo -e "\n\t[-I] Install this as /usr/local/bin/encode"
+    echo -e "\t[-U] Uninstall this from /usr/local/bin/encode"
     return 0 
 }
 

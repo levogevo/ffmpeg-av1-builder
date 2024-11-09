@@ -1,13 +1,14 @@
 #!/bin/bash
 
 usage() {
-    echo "estimate_fg.sh -i input_file [-o output_file] [-l NUM] [-s NUM] [-h NUM] [-I] [-U]"
-    echo -e "\t-o file to output results to"
-    echo -e "\t-l low value to use as minimum film-grain"
-    echo -e "\t-s step value to use increment from low to high film-grain"
-    echo -e "\t-h high value to use as maximum film-grain"
-    echo -e "\t-I Install this as /usr/local/bin/estimate-film-grain"
-    echo -e "\t-U Uninstall this from /usr/local/bin/estimate-film-grain"
+    echo "$(basename "$0") -i input_file [options]"
+    echo -e "\t[-o output_file] file to output results to"
+    echo -e "\t[-l NUM] low value to use as minimum film-grain"
+    echo -e "\t[-s NUM] step value to use increment from low to high film-grain"
+    echo -e "\t[-h NUM] high value to use as maximum film-grain"
+    echo -e "\t[-p] plot bitrates using gnuplot"
+    echo -e "\n\t[-I] Install this as /usr/local/bin/estimate-film-grain"
+    echo -e "\t[-U] Uninstall this from /usr/local/bin/estimate-film-grain"
     return 0 
 }
 
@@ -22,7 +23,7 @@ check_not_negative_optarg() {
 
 echoerr() { echo -e "$@" 1>&2; }
 
-OPTS='o:l:s:h:i:IU'
+OPTS='po:l:s:h:i:IU'
 NUM_OPTS="${#OPTS}"
 # only using -I or -U
 MIN_OPT=1
@@ -57,6 +58,9 @@ while getopts "$OPTS" flag; do
         o)
             OUTPUT_FILE="${OPTARG}"
             ;;
+        p)
+            PLOT='true'
+            ;;
         l)
             check_not_negative_optarg "${OPTARG}"
             LOW_GRAIN="${OPTARG}"
@@ -79,8 +83,8 @@ done
 
 # set default values
 test ! -n "$LOW_GRAIN" && LOW_GRAIN=0
-test ! -n "$STEP_GRAIN" && STEP_GRAIN=5
-test ! -n "$HIGH_GRAIN" && HIGH_GRAIN=30
+test ! -n "$STEP_GRAIN" && STEP_GRAIN=2
+test ! -n "$HIGH_GRAIN" && HIGH_GRAIN=20
 
 echo "Estimating film grain for $INPUT"
 echo -e "\tTesting grain from $LOW_GRAIN-$HIGH_GRAIN with $STEP_GRAIN step increments" && sleep 2
@@ -99,7 +103,7 @@ get_avg_bitrate() {
 check_bitrate_bounds() {
     TEST_BITRATE="$1"
     TARGET_BITRATE="$2"
-    TARGET_DELTA="$(echo "$TARGET_BITRATE * .60" | bc)"
+    TARGET_DELTA="$(echo "$TARGET_BITRATE * .70" | bc)"
     DIFF_BITRATE=$((TEST_BITRATE - TARGET_BITRATE))
     DIFF_BITRATE="$(echo ${DIFF_BITRATE#-})"
     echoerr "TEST_BITRATE:\t$TEST_BITRATE"
@@ -119,10 +123,12 @@ SEGMENT_TIME=4
 MAX_SEGMENTS=6
 TOTAL_SECONDS="$(get_duration "$INPUT")"
 INPUT_BITRATE="$(get_avg_bitrate "$INPUT")"
-SEGMENT_DIR='/tmp/fg_segments'
+CLEAN_INP_NAME="$(echo "$INPUT" | tr ' ' '.' | tr -d '{}[]+')"
+SEGMENT_DIR="/tmp/${CLEAN_INP_NAME}/fg_segments"
 SEGMENTS_LIST="$SEGMENT_DIR/segments_list.txt"
 OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
-GRAIN_LOG="grain_log.txt"
+OPTS_HASH="$(echo "$@" | sha256sum | tr -d ' ' | cut -d'-' -f1)"
+GRAIN_LOG="$SEGMENT_DIR/grain_log-${OPTS_HASH}.txt"
 
 segment_video() {
     # set number of segments and start times
@@ -151,7 +157,7 @@ segment_video() {
             return 0
         fi
         START_TIME="${START_TIMES[$INDEX]}"
-        OUTPUT_SEGMENT="$SEGMENT_DIR/segment_$INDEX.mkv"
+        OUTPUT_SEGMENT="$SEGMENT_DIR/segment_${INDEX}.mkv"
         echo "START_TIME: $START_TIME"
         ffmpeg -ss "$START_TIME" -i "$INPUT" \
             -hide_banner -loglevel error -t "$SEGMENT_TIME" \
@@ -179,16 +185,16 @@ get_output_bitrate() {
 }
 
 encode_segments() {
-    cd "$SEGMENT_DIR" || exit
-    mkdir ./encoded || exit
+    mkdir -p "$SEGMENT_DIR/encoded"
     echo > "$GRAIN_LOG"
-    for VIDEO in $(ls segment*.mkv)
+    for VIDEO in $(ls "$SEGMENT_DIR"/segment_*.mkv)
     do
-        echo "$VIDEO" >> "$GRAIN_LOG"
-        for GRAIN in $(seq $LOW_GRAIN $STEP_GRAIN $HIGH_GRAIN)
+        echo "file: $VIDEO" >> "$GRAIN_LOG"
+        for GRAIN in $(seq "$LOW_GRAIN" "$STEP_GRAIN" "$HIGH_GRAIN")
         do
-            OUTPUT_VIDEO="encoded/encoded_$VIDEO"
-            encode -i "$VIDEO" -g $GRAIN "$OUTPUT_VIDEO"
+            BASE_VID="$(basename "$VIDEO")"
+            OUTPUT_VIDEO="$SEGMENT_DIR/encoded/encoded_${BASE_VID}"
+            encode -i "$VIDEO" -g "$GRAIN" "$OUTPUT_VIDEO"
             BITRATE="$(get_output_bitrate "$OUTPUT_VIDEO")"
             echo -e "\tgrain: $GRAIN, bitrate: $BITRATE" >> "$GRAIN_LOG"
         done
@@ -200,6 +206,63 @@ encode_segments() {
 
 }
 
+plot() {
+    mapfile -t FILES< <( grep "file:" "$GRAIN_LOG" | cut -d':' -f2 | tr -d ' ' | sort | uniq )
+    mapfile -t GRAINS< <( grep "grain:" "$GRAIN_LOG" | cut -d':' -f2  | cut -d',' -f1 | tr -d ' ' | sort -Vu)
+    declare -a BITRATE_SUMS=()
+
+    for FILE in "${FILES[@]}"
+    do
+        # get grains for each file
+        LINE_FILE="$(grep -n "$FILE" "$GRAIN_LOG" | cut -d':' -f1 )"
+        START_GRAIN_LINE="$(echo "$LINE_FILE + 1" | bc)"
+        END_GRAIN_LINE="$(echo "$LINE_FILE + ${#GRAINS[@]}" | bc)"
+        GRAINS_FOR_FILE="$(sed -n "$START_GRAIN_LINE, $END_GRAIN_LINE p" "$GRAIN_LOG")"
+        # set baseline bitrate value
+        BASELINE_BITRATE="$(echo "$GRAINS_FOR_FILE" | tr -d ' ' | grep "grain:${GRAINS[0]}" | cut -d':' -f3)"
+        # get sum of bitrate percentages
+        for GRAIN in "${GRAINS[@]}"
+        do
+            COMPARE_BITRATE="$(echo "$GRAINS_FOR_FILE" | tr -d ' ' | grep "grain:$GRAIN" | cut -d':' -f3)"
+            BITRATE_PERCENTAGE="$(echo "$COMPARE_BITRATE / $BASELINE_BITRATE" | bc -l)"
+            # fix NULL BITRATE_SUM for first comparison
+            test -n "${BITRATE_SUMS[$GRAIN]}" || BITRATE_SUMS["$GRAIN"]=0
+            BITRATE_SUMS["$GRAIN"]="$(echo "$BITRATE_PERCENTAGE + ${BITRATE_SUMS[$GRAIN]}" | bc -l)" 
+        done
+    done
+
+    # clear plot file
+    PLOT="$SEGMENT_DIR/plot.dat"
+    echo -n > "$PLOT"
+
+    # set average bitrates per grain
+    for GRAIN in "${GRAINS[@]}"
+    do
+        AVG_BITRATE="$(echo "${BITRATE_SUMS[$GRAIN]} / ${#FILES[@]}" | bc -l)"
+        echo -e "$GRAIN\t$AVG_BITRATE" >> "$PLOT"
+    done
+
+    # set terminal size
+    TERMINAL="$(tty)"
+    COLUMNS=$(stty -a <"$TERMINAL" | grep -Po '(?<=columns )\d+')
+    ROWS=$(stty -a <"$TERMINAL" | grep -Po '(?<=rows )\d+')
+
+    # plot data
+    gnuplot -p -e " \
+    set terminal dumb size $COLUMNS, $ROWS; \
+    set autoscale; \
+    set style line 1 \
+        linecolor rgb '#0060ad' \
+        linetype 1 linewidth 2 \
+        pointtype 7 pointsize 1.5; \
+    plot '$PLOT' with linespoints linestyle 1
+    "
+}
+
+test "$PLOT" == 'true' && test -f "$GRAIN_LOG" && \
+    { plot ; exit $? ; }
 get_avg_bitrate "$INPUT"
 segment_video
 encode_segments
+test "$PLOT" == 'true' && test -f "$GRAIN_LOG" && \
+    { plot ; }
