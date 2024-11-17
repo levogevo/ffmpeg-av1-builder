@@ -103,7 +103,7 @@ get_avg_bitrate() {
 check_bitrate_bounds() {
     TEST_BITRATE="$1"
     TARGET_BITRATE="$2"
-    TARGET_DELTA="$(echo "$TARGET_BITRATE * .70" | bc)"
+    TARGET_DELTA="$(echo "$TARGET_BITRATE * 1" | bc)"
     DIFF_BITRATE=$((TEST_BITRATE - TARGET_BITRATE))
     DIFF_BITRATE="$(echo ${DIFF_BITRATE#-})"
     echoerr "TEST_BITRATE:\t$TEST_BITRATE"
@@ -119,7 +119,7 @@ check_bitrate_bounds() {
 
 # global variables
 SEGMENTS=15
-SEGMENT_TIME=4
+SEGMENT_TIME=3
 MAX_SEGMENTS=6
 TOTAL_SECONDS="$(get_duration "$INPUT")"
 INPUT_BITRATE="$(get_avg_bitrate "$INPUT")"
@@ -127,7 +127,7 @@ CLEAN_INP_NAME="$(echo "$INPUT" | tr ' ' '.' | tr -d '{}[]+')"
 SEGMENT_DIR="/tmp/${CLEAN_INP_NAME}/fg_segments"
 SEGMENTS_LIST="$SEGMENT_DIR/segments_list.txt"
 OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
-OPTS_HASH="$(echo "$@" | sha256sum | tr -d ' ' | cut -d'-' -f1)"
+OPTS_HASH="$(echo "${LOW_GRAIN}${STEP_GRAIN}${HIGH_GRAIN}" | sha256sum | tr -d ' ' | cut -d'-' -f1)"
 GRAIN_LOG="$SEGMENT_DIR/grain_log-${OPTS_HASH}.txt"
 
 segment_video() {
