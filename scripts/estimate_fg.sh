@@ -223,7 +223,7 @@ plot() {
         # get sum of bitrate percentages
         for GRAIN in "${GRAINS[@]}"
         do
-            COMPARE_BITRATE="$(echo "$GRAINS_FOR_FILE" | tr -d ' ' | grep "grain:$GRAIN" | cut -d':' -f3)"
+            COMPARE_BITRATE="$(echo "$GRAINS_FOR_FILE" | tr -d ' ' | grep -w "grain:$GRAIN" | cut -d':' -f3)"
             BITRATE_PERCENTAGE="$(echo "$COMPARE_BITRATE / $BASELINE_BITRATE" | bc -l)"
             # fix NULL BITRATE_SUM for first comparison
             test -n "${BITRATE_SUMS[$GRAIN]}" || BITRATE_SUMS["$GRAIN"]=0
@@ -256,7 +256,7 @@ plot() {
         linetype 1 linewidth 2 \
         pointtype 7 pointsize 1.5; \
     plot '$PLOT' with linespoints linestyle 1
-    "
+    " | less
 }
 
 test "$PLOT" == 'true' && test -f "$GRAIN_LOG" && \
