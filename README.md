@@ -53,7 +53,38 @@ estimate-film-grain -i input_file [options]
         [-I] Install this as /usr/local/bin/estimate-film-grain
         [-U] Uninstall this from /usr/local/bin/estimate-film-grain
 ```
-
+Example usage:
+ - `estimate-film-grain -i input.mkv -p` plot input.mkv
+```
+     1 +------------------------------------------------------------------------------------------------------+
+       |    *****G*****          +                         +                        +                         |
+       |               *****G**                                                       '/tmp/plot.dat' ***G*** |
+  0.95 |-+                     *****                                                                        +-|
+       |                            **G*                                                                      |
+       |                                ***                                                                   |
+       |                                   ****                                                               |
+   0.9 |-+                                     *G*                                                          +-|
+       |                                          ****                                                        |
+       |                                              ****                                                    |
+  0.85 |-+                                                *G*                                               +-|
+       |                                                     ***                                              |
+       |                                                        ****                                          |
+   0.8 |-+                                                          *G*                                     +-|
+       |                                                               ***                                    |
+       |                                                                  ****                                |
+       |                                                                      *G*                             |
+  0.75 |-+                                                                       ***                        +-|
+       |                                                                            ****                      |
+       |                                                                                *G*                   |
+   0.7 |-+                                                                                 ***              +-|
+       |                                                                                      **              |
+       |                                                                                        ***           |
+       |                                                                                           *G*        |
+  0.65 |-+                                                                                            ***   +-|
+       |                                                                                                 **** |
+       |                         +                         +                        +                        *|
+   0.6 +------------------------------------------------------------------------------------------------------+
+```
 ## Benchmark script
 AV1 encode quality is tested against 5 different open source videos using libsvtav1, librav1e, and libaom.
 Netflix's libvmaf is used to analyze quality of the encodes against the original files.
