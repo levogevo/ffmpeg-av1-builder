@@ -118,21 +118,22 @@ check_bitrate_bounds() {
 }
 
 # global variables
-SEGMENTS=15
+SEGMENTS=30
 SEGMENT_TIME=3
-MAX_SEGMENTS=6
+MAX_SEGMENTS=5
 TOTAL_SECONDS="$(get_duration "$INPUT")"
-INPUT_BITRATE="$(get_avg_bitrate "$INPUT")"
+# INPUT_BITRATE="$(get_avg_bitrate "$INPUT")"
 CLEAN_INP_NAME="$(echo "$INPUT" | tr ' ' '.' | tr -d '{}[]+')"
 SEGMENT_DIR="/tmp/${CLEAN_INP_NAME}/fg_segments"
+SEGMENT_BITRATE_LIST="$SEGMENT_DIR/segment_bitrates.txt"
 SEGMENTS_LIST="$SEGMENT_DIR/segments_list.txt"
-OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
+# OUTPUT_CONCAT="$SEGMENT_DIR/concatenated.mkv"
 OPTS_HASH="$(echo "${LOW_GRAIN}${STEP_GRAIN}${HIGH_GRAIN}" | sha256sum | tr -d ' ' | cut -d'-' -f1)"
 GRAIN_LOG="$SEGMENT_DIR/grain_log-${OPTS_HASH}.txt"
 
 segment_video() {
     # set number of segments and start times
-    SEGMENT_PERCENTAGE=$((100 / SEGMENTS))
+    SEGMENT_PERCENTAGE=$(echo "100 / $SEGMENTS" | bc)
     SEGMENT=$SEGMENT_PERCENTAGE
     START_TIMES=()
     while [[ $SEGMENT -lt 100 ]]
@@ -146,34 +147,30 @@ segment_video() {
     rm -rf "$SEGMENT_DIR"
     mkdir -p "$SEGMENT_DIR"
     NUM_SEGMENTS=0
+    echo > "$SEGMENT_BITRATE_LIST"
     for INDEX in "${!START_TIMES[@]}"
     do
-        # don't concatenate the last segment
-        if [[ $((INDEX + 1)) == "${#START_TIMES[@]}" ]]; then
-            break
-        fi
-        # only encode the max number of segments
-        if [[ $NUM_SEGMENTS == "$MAX_SEGMENTS" ]]; then
-            return 0
-        fi
         START_TIME="${START_TIMES[$INDEX]}"
         OUTPUT_SEGMENT="$SEGMENT_DIR/segment_${INDEX}.mkv"
-        echo "START_TIME: $START_TIME"
         ffmpeg -ss "$START_TIME" -i "$INPUT" \
             -hide_banner -loglevel error -t "$SEGMENT_TIME" \
-            -map 0:0 -reset_timestamps 1 -c copy "$OUTPUT_SEGMENT"
+            -map 0:v -reset_timestamps 1 -c copy "$OUTPUT_SEGMENT"
         OUTPUT_SEGMENT_BITRATE="$(get_avg_bitrate "$OUTPUT_SEGMENT")"
-        echo "comparing: $OUTPUT_SEGMENT_BITRATE vs $INPUT_BITRATE"
-        CHECK_BOUNDS="$(check_bitrate_bounds "$OUTPUT_SEGMENT_BITRATE" "$INPUT_BITRATE")"
-        if [[ "$CHECK_BOUNDS" == "pass" ]]; then
-            echo "$OUTPUT_SEGMENT is within bitrate bounds"
-            echo "file '$(basename "$OUTPUT_SEGMENT")'" >> "$SEGMENTS_LIST"
-            NUM_SEGMENTS=$((NUM_SEGMENTS + 1))
-        else
-            echo "$OUTPUT_SEGMENT is not within bitrate bounds"
-            rm "$OUTPUT_SEGMENT"
-        fi
+        echo "$(get_avg_bitrate "$OUTPUT_SEGMENT"): $OUTPUT_SEGMENT" >> "$SEGMENT_BITRATE_LIST"
     done
+
+    # remove all but the highest bitrate MAX_SEGMENTS
+    mapfile -t KEEP_SEGMENTS< <(cat "$SEGMENT_BITRATE_LIST" | sort -nr | head -${MAX_SEGMENTS} | tr -d ' ' | cut -d':' -f2)
+    for KEEP in "${KEEP_SEGMENTS[@]}"
+    do
+        mv "$KEEP" "${KEEP}.keep"
+    done
+    rm "$SEGMENT_DIR"/*.mkv
+    for KEEP in "${KEEP_SEGMENTS[@]}"
+    do
+        mv "${KEEP}.keep" "$KEEP"
+    done
+    ls "$SEGMENT_DIR"
     
     # ffmpeg -f concat -safe 0 -i "$SEGMENTS_LIST" -hide_banner -loglevel error -c copy "$OUTPUT_CONCAT"
 }
