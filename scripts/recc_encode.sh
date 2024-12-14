@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is simply my recommended encoding method.
 # do not take this as a holy grail.
@@ -26,10 +26,10 @@ get_duration() {
 }
 
 get_crop() {
-    DURATION="$(get_duration "$INPUT")"
-    TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
+    local DURATION="$(get_duration "$INPUT")"
+    local TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
     # get cropdetect value for first 1/5 of input
-    TIME_ENC="$(echo "$TOTAL_SECONDS / 5" | bc)"
+    local TIME_ENC="$(echo "$TOTAL_SECONDS / 5" | bc)"
     ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
         -map '0:v:0' -filter:v:0 'cropdetect=limit=64:round=16:skip=2:reset_count=0' \
         -codec:v 'wrapped_avframe' -f 'null' '/dev/null' -y 2>&1 | grep -o crop=.* \
@@ -37,10 +37,10 @@ get_crop() {
 }
 
 unmap_streams(){
-    INPUT="$1"
-    UNMAP_FILTER="bin_data|jpeg|png"
-    UNMAP_STREAMS=$(ffprobe "$INPUT" 2>&1 | grep "Stream" | grep -Ei "$UNMAP_FILTER" | cut -d':' -f2 | cut -d'[' -f1 | tr '\n' ' ')
-    UNMAP_CMD=""
+    local INPUT="$1"
+    local UNMAP_FILTER="bin_data|jpeg|png"
+    local UNMAP_STREAMS=$(ffprobe "$INPUT" 2>&1 | grep "Stream" | grep -Ei "$UNMAP_FILTER" | cut -d':' -f2 | cut -d'[' -f1 | tr '\n' ' ')
+    local UNMAP_CMD=""
     for UNMAP_STREAM in $UNMAP_STREAMS; do
         UNMAP_CMD+="-map -0:$UNMAP_STREAM "
     done
@@ -48,7 +48,7 @@ unmap_streams(){
 }
 
 get_bitrate_audio() {
-    BITRATE_CMD=""
+    local BITRATE_CMD=""
     NUM_AUDIO_STREAMS=$(ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
     for ((i = 0; i < NUM_AUDIO_STREAMS; i++)); do
         NUM_CHANNELS=$(ffprobe -v error -select_streams "a:$i" -show_entries stream=channels -of default=noprint_wrappers=1:nokey=1 "$INPUT")
@@ -59,7 +59,7 @@ get_bitrate_audio() {
 }
 
 convert_subs() {
-    SUB_CONVERT_CMD=""
+    local SUB_CONVERT_CMD=""
     NUM_SUBTITLE_STREAMS=$(ffprobe -v error -select_streams s -show_entries stream=index -of csv=p=0 "$INPUT" | wc -l)
     for ((i = 0; i < NUM_SUBTITLE_STREAMS; i++)); do
         SUBTITLE_FORMAT=$(ffprobe -v error -select_streams "s:$i" -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$INPUT")
@@ -68,9 +68,30 @@ convert_subs() {
     echo "$SUB_CONVERT_CMD"
 }
 
+ffmpeg_version() {
+    ffmpeg -version 2>&1 | head -n 1 | grep version | cut -d' ' -f1-3
+}
+
+video_enc_version() {
+    SvtAv1EncApp --version | head -n 1
+}
+
+audio_enc_version() {
+    local AUDIO_ENC_VERSION
+    if command -v ldd > /dev/null ; then
+        AUDIO_ENC_VERSION="$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+    elif command -v otool > /dev/null ; then
+        AUDIO_ENC_VERSION="$(otool -L $(which ffmpeg) | grep libopus | tr -d ')' | awk -F' ' '{print $NF}')"
+    fi
+    local AUDIO_ENC_GIT="$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
+    test "$AUDIO_ENC_GIT" != '' && AUDIO_ENC_VERSION+="-g${AUDIO_ENC_GIT}"
+    echo "$AUDIO_ENC_VERSION"
+    
+}
+
 encode() {
     ENCODE_FILE="/tmp/$(basename "$OUTPUT")_encode.sh"
-    echo -e '#!/bin/bash\n' > "$ENCODE_FILE"
+    echo -e '#!/usr/bin/env bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
     SVT_PARAMS="${GRAIN}sharpness=3:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
@@ -102,14 +123,13 @@ encode() {
     FFMPEG_PARAMS="-y -c:s copy \$CONVERT_SUBS -c:V \$VIDEO_ENCODER \$VIDEO_PARAMS"
     echo "export FFMPEG_PARAMS=\"$FFMPEG_PARAMS\"" >> "$ENCODE_FILE"
 
-    FFMPEG_VERSION="ffmpeg_version=$(ffmpeg -version 2>&1 | grep version | cut -d' ' -f1-3)"
+    FFMPEG_VERSION="ffmpeg_version=$(ffmpeg_version)"
     echo "export FFMPEG_VERSION=\"$FFMPEG_VERSION\"" >> "$ENCODE_FILE"
 
-    VIDEO_ENC_VERSION="video_encoder=$(SvtAv1EncApp --version | head -n 1)"
+    VIDEO_ENC_VERSION="video_encoder=$(video_enc_version)"
     echo "export VIDEO_ENC_VERSION=\"$VIDEO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
-    AUDIO_ENC_VERSION="audio_encoder=$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
-    AUDIO_ENC_VERSION+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
+    AUDIO_ENC_VERSION="audio_encoder=$(audio_enc_version)"
     echo "export AUDIO_ENC_VERSION=\"$AUDIO_ENC_VERSION\"" >> "$ENCODE_FILE"
 
     ADD_METADATA="\"encoding_params=\$VIDEO_PARAMS \$SVT_PARAMS\""
@@ -182,10 +202,9 @@ while getopts "$OPTS" flag; do
             ;;
         v)
             SCRIPT_VER="$(cd "$BUILDER_DIR" && git rev-parse --short HEAD)"
-            FFMPEG_VER="$(ffmpeg -version 2>&1 | head -n 1 | grep version | cut -d' ' -f1-3)"
-            SVTAV1_VER="$(SvtAv1EncApp --version | head -n 1)"
-            LIBOPUS_VER="$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
-            LIBOPUS_VER+="-g$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
+            FFMPEG_VER="$(ffmpeg_version)"
+            SVTAV1_VER="$(video_enc_version)"
+            LIBOPUS_VER="$(audio_enc_version)"
             echo "encode version: $SCRIPT_VER"
             echo "ffmpeg version: $FFMPEG_VER"
             echo "svtav1 version: $SVTAV1_VER"

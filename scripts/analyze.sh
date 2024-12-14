@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 BASE_DIR=$(pwd)
 RESULTS="$BASE_DIR/benchmark/results.csv"

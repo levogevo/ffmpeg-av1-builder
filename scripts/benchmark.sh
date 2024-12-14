@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 has_encoder() {
     CHECK_ENC="$1"

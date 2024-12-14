@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 usage() {
      echo "./scripts/build.sh [-h] [-A] [-s] [-o] [-r] [-O n]"
@@ -124,22 +124,22 @@ VPX_DIR="$BASE_DIR/vpx"
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
 
+# prefix to install
+PREFIX='/usr/local'
+
 export ARCH=$(uname -m)
-export COMP_FLAGS=""
+export COMP_FLAGS="-I${PREFIX}/include"
 if [[ "$ARCH" == "x86_64" ]]
 then
-  COMP_FLAGS="-march=native"
-elif [[ "$ARCH" == "aarch64" ]]
+  COMP_FLAGS+=" -march=native"
+elif [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]
 then
-  COMP_FLAGS="-mcpu=native"
+  COMP_FLAGS+=" -mcpu=native"
 fi
-echo "COMP_FLAGS: $COMP_FLAGS"
+echo "COMP_FLAGS: [$COMP_FLAGS]"
 
 # for ccache
 export PATH="/usr/lib/ccache:$PATH"
-
-# prefix to install
-PREFIX='/usr/local'
 
 # options for ffmpeg configure
 FFMPEG_CONFIGURE_OPT=""
@@ -152,6 +152,11 @@ git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
 git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
 git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
+
+# check for required local directories
+sudo mkdir ${PREFIX}/bin \
+     ${PREFIX}/lib \
+     ${PREFIX}/include
 
 # rockchip ffmpeg libs
 # IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
@@ -175,7 +180,7 @@ then
      cmake .. -DCMAKE_BUILD_TYPE=Release \
                -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DBUILD_SHARED_LIBS=ON \
-               -DBUILD_TEST=OFF \
+               -DBUILD_TEST=OFF -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
      make -j"$(nproc)" || exit
@@ -187,8 +192,9 @@ then
      rm -rf rga_build.user
      mkdir rga_build.user
      meson setup . rga_build.user --buildtype release -Db_lto=true \
-     --default-library=shared -Dlibdrm=false -Dlibrga_demo=false --prefix "$PREFIX" \
-     --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
+          --default-library=shared -Dlibdrm=false -Dlibrga_demo=false \
+          --prefix "$PREFIX" --optimization="$OPT_LVL" \
+          -Dc_args="$COMP_FLAGS" -Dcpp_args="-fpermissive $COMP_FLAGS" || exit
      ninja -vC rga_build.user || exit
      sudo ninja -vC rga_build.user install || exit
 fi
@@ -208,19 +214,13 @@ then
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
      source "$HOME/.cargo/env" # for good measure
      cargo clean
-     RUSTFLAGS="-C target-cpu=native" cargo build --release
-     sudo cp target/release/dovi_tool /usr/local/bin/ || exit
+     RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
+     sudo cp target/release/dovi_tool ${PREFIX}/bin/ || exit
 
      # build libdovi
      cd dolby_vision || exit
-     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
-          --prefix="$DOVI_DIR/ffmpeg_build.user" \
-          --libdir="$DOVI_DIR/ffmpeg_build.user"/lib \
-          --includedir="$DOVI_DIR/ffmpeg_build.user"/include
-     cd "$DOVI_DIR"/ffmpeg_build.user || exit
-     sudo rm /usr/local/include/libdovi /usr/local/lib/libdovi.*
-     sudo cp ./lib/* /usr/local/lib/ -r || exit
-     sudo cp ./include/* /usr/local/include/ -r
+     RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
+     sudo cargo cinstall --release
 
      # build hdr10plus_tool
      cd "$HDR10_DIR/" || exit
@@ -228,19 +228,13 @@ then
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
      source "$HOME/.cargo/env" # for good measure
      cargo clean
-     RUSTFLAGS="-C target-cpu=native" cargo build --release
-     sudo cp target/release/hdr10plus_tool /usr/local/bin/ || exit
+     RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
+     sudo cp target/release/hdr10plus_tool ${PREFIX}/bin/ || exit
 
      # build libhdr10plus
      cd hdr10plus || exit
-     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
-          --prefix="$HDR10_DIR/ffmpeg_build.user" \
-          --libdir="$HDR10_DIR/ffmpeg_build.user"/lib \
-          --includedir="$HDR10_DIR/ffmpeg_build.user"/include
-     cd "$HDR10_DIR"/ffmpeg_build.user || exit
-     sudo rm /usr/local/include/libhdr10plus-rs /usr/local/lib/libhdr10plus-rs.*
-     sudo cp ./lib/* /usr/local/lib/ -r || exit
-     sudo cp ./include/* /usr/local/include/ -r
+     RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
+     sudo cargo cinstall --release
 
      # build svt-avt-psy
      cd "$SVT_PSY_DIR/" || exit
@@ -254,9 +248,10 @@ then
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
                -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
                -DLIBHDR10PLUS_RS_FOUND=1 \
+               -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
-     make -j"$(nproc)" || exit
+     ccache make -j"$(nproc)" || exit
      sudo make install
 else
      # build svt-av1
@@ -269,7 +264,7 @@ else
      cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO=ON \
                -DCMAKE_INSTALL_RPEFIX="$PREFIX" \
                -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
-               -DCOVERAGE=OFF \
+               -DCOVERAGE=OFF -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} $COMP_FLAGS" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} $COMP_FLAGS" || exit
      make -j"$(nproc)" || exit
@@ -285,14 +280,7 @@ if [[ "$BUILD_ALL_AV1" == "true" ]]; then
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
      source "$HOME/.cargo/env" # for good measure
      cargo clean
-     RUSTFLAGS="-C target-cpu=native" cargo cinstall --release \
-          --prefix="$(pwd)"/ffmpeg_build.user \
-          --libdir="$(pwd)"/ffmpeg_build.user/lib \
-          --includedir="$(pwd)"/ffmpeg_build.user/include || exit
-     cd ffmpeg_build.user || exit
-     sudo rm /usr/local/include/rav1e /usr/local/lib/librav1e.*
-     sudo cp ./lib/* /usr/local/lib/ -r || exit
-     sudo cp ./include/* /usr/local/include/ -r || exit
+     RUSTFLAGS="-C target-cpu=native" sudo ccache cargo cinstall --release
 
      # build aom
      cd "$AOM_DIR/" || exit
@@ -334,7 +322,7 @@ rm -rf build.user
 mkdir build.user
 meson setup . build.user --buildtype release -Db_lto=true --prefix "$PREFIX" \
      --optimization="$OPT_LVL" -Dc_args="$COMP_FLAGS" -Dcpp_args="$COMP_FLAGS" || exit
-ninja -vC build.user || exit
+ccache ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
 
 # build opus
@@ -343,7 +331,7 @@ update_git
 ./autogen.sh || exit
 export CFLAGS="-O${OPT_LVL} -flto $COMP_FLAGS"
 make clean
-./configure --prefix="$PREFIX" || exit
+ccache ./configure --prefix="$PREFIX" || exit
 make -j"$(nproc)" || exit
 sudo make install || exit
 unset CFLAGS
@@ -422,17 +410,23 @@ if [[ "$BUILD_OTHERS" == "true" ]]; then
      sudo make install || exit
 fi
 
-# ldconfig for shared libs
-sudo mkdir /etc/ld.so.conf.d/
-echo -e "/usr/local/lib\n/usr/local/lib/$(gcc -dumpmachine)" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
-sudo ldconfig
+if command -v ldconfig ; then
+     # ldconfig for shared libs
+     sudo mkdir /etc/ld.so.conf.d/
+     echo -e "${PREFIX}/lib\n${PREFIX}/lib/$(gcc -dumpmachine)" | sudo tee /etc/ld.so.conf.d/ffmpeg.conf || exit 1
+     sudo ldconfig
+fi
+
+# for MacOs / Darwin
+test "$(uname)" == "Darwin" && \
+     FFMPEG_CONFIGURE_OPT+="--enable-rpath "
 
 # build ffmpeg
 cd "$FFMPEG_DIR/" || exit
 update_git
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
-./configure --enable-libsvtav1 --prefix="$PREFIX" \
+ccache ./configure --enable-libsvtav1 --prefix="$PREFIX" \
      --enable-libdav1d --enable-libopus \
      $FFMPEG_CONFIGURE_OPT \
      --arch="$ARCH" --cpu=native \
@@ -443,7 +437,7 @@ make clean
      --disable-podpages --disable-txtpages || exit
 make -j"$(nproc)" || exit
 sudo make install || exit
-sudo cp ff*_g /usr/local/bin/
+sudo cp ff*_g ${PREFIX}/bin/
 
 # validate encoders
 hash -r

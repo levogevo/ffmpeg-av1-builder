@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # global path variables
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
