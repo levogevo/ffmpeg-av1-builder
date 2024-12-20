@@ -83,7 +83,7 @@ audio_enc_version() {
     elif command -v otool > /dev/null ; then
         AUDIO_ENC_VERSION="$(otool -L $(which ffmpeg) | grep libopus | tr -d ')' | awk -F' ' '{print $NF}')"
     fi
-    local AUDIO_ENC_GIT="$(cd "$BUILDER_DIR/opus" && git rev-parse --short HEAD)"
+    local AUDIO_ENC_GIT="$(cd "$BUILDER_DIR/repos/opus" && git rev-parse --short HEAD)"
     test "$AUDIO_ENC_GIT" != '' && AUDIO_ENC_VERSION+="-g${AUDIO_ENC_GIT}"
     echo "$AUDIO_ENC_VERSION"
     

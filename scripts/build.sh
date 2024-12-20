@@ -223,8 +223,9 @@ then
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release \
                -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+               -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DBUILD_SHARED_LIBS=ON \
-               -DBUILD_TEST=OFF -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
+               -DBUILD_TEST=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || exit
      ccache make -j"${THREADS}" || exit
@@ -236,10 +237,16 @@ then
      update_git
      rm -rf rga_build.user
      mkdir rga_build.user
-     meson setup . rga_build.user --buildtype release -Db_lto=true \
-          --default-library=shared -Dlibdrm=false -Dlibrga_demo=false \
-          --prefix "${PREFIX}" --optimization="$OPT_LVL" \
-          -Dc_args="${COMP_FLAGS}" -Dcpp_args="-fpermissive ${COMP_FLAGS}" || exit
+     meson setup . rga_build.user \
+          --buildtype release \
+          --prefix "${PREFIX}" \
+          --default-library=shared \
+          -Db_lto=true \
+          -Dlibdrm=false \
+          -Dlibrga_demo=false \
+          --optimization="$OPT_LVL" \
+          -Dc_args="${COMP_FLAGS}" \
+          -Dcpp_args="-fpermissive ${COMP_FLAGS}" || exit
      ccache ninja -vC rga_build.user || exit
      sudo ninja -vC rga_build.user install || exit
 fi
@@ -259,7 +266,7 @@ then
      # build libdovi
      cd dolby_vision || exit
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo cargo cinstall --prefix="${PREFIX}" --release
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
 
      # build hdr10plus_tool
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
@@ -274,7 +281,7 @@ then
      # build libhdr10plus
      cd hdr10plus || exit
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo cargo cinstall --prefix="${PREFIX}" --release
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
 
      # build svt-avt-psy
      # clear svt because of unrelated histories error
@@ -286,10 +293,13 @@ then
      mkdir build_svt.user
      cd build_svt.user || exit
      make clean
-     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO="${LTO_SWITCH}" \
+     cmake .. -DCMAKE_BUILD_TYPE=Release \
+               -DSVT_AV1_LTO="${LTO_SWITCH}" \
                -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
-               -DCOVERAGE=OFF -DLIBDOVI_FOUND=1 \
+               -DENABLE_AVX512=ON \
+               -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF \
+               -DLIBDOVI_FOUND=1 \
                -DLIBHDR10PLUS_RS_FOUND=1 \
                -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
@@ -305,10 +315,13 @@ else
      mkdir build_svt.user
      cd build_svt.user || exit
      make clean
-     cmake .. -DCMAKE_BUILD_TYPE=Release -DSVT_AV1_LTO="${LTO_SWITCH}" \
+     cmake .. -DCMAKE_BUILD_TYPE=Release \
+               -DSVT_AV1_LTO="${LTO_SWITCH}" \
                -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-               -DENABLE_AVX512=ON -DBUILD_TESTING=OFF \
-               -DCOVERAGE=OFF -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
+               -DENABLE_AVX512=ON \
+               -DBUILD_TESTING=OFF \
+               -DCOVERAGE=OFF \
+               -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
                -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || exit
      ccache make -j"${THREADS}" || exit
@@ -324,7 +337,7 @@ if [[ "$BUILD_ALL_AV1" == "Y" ]]; then
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo cargo cinstall --prefix="${PREFIX}" --release
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
 
      # build aom
      git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
@@ -334,8 +347,10 @@ if [[ "$BUILD_ALL_AV1" == "Y" ]]; then
      mkdir build_aom.user
      cd build_aom.user || exit
      make clean
-     cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON \
-               -DENABLE_TESTS=OFF -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+     cmake .. -DCMAKE_BUILD_TYPE=Release \
+               -DBUILD_SHARED_LIBS=ON \
+               -DENABLE_TESTS=OFF \
+               -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
                -DCMAKE_C_FLAGS="${LTO_FLAG} -O${OPT_LVL} ${COMP_FLAGS}" \
                -DCMAKE_CXX_FLAGS="${LTO_FLAG} -O${OPT_LVL} ${COMP_FLAGS}" || exit
      ccache make -j"${THREADS}" || exit
@@ -353,9 +368,14 @@ if [[ "$BUILD_VMAF" == "Y" ]]; then
           rm -rf build.user
           mkdir build.user
           pip install meson
-          meson setup . build.user --buildtype release -Denable_float=true \
-               -Db_lto="${LTO_BOOL}" --optimization="$OPT_LVL" -Dc_args="${COMP_FLAGS}" \
-               --prefix "${PREFIX}" -Dcpp_args="${COMP_FLAGS}" || exit
+          meson setup . build.user \
+               --buildtype release \
+               --prefix "${PREFIX}" \
+               -Denable_float=true \
+               -Db_lto="${LTO_BOOL}" \
+               --optimization="$OPT_LVL" \
+               -Dc_args="${COMP_FLAGS}" \
+               -Dcpp_args="${COMP_FLAGS}" || exit
           ccache ninja -vC build.user || exit
           sudo ninja -vC build.user install || exit
      )
@@ -367,8 +387,13 @@ cd "$DAV1D_DIR" || exit
 update_git
 rm -rf build.user
 mkdir build.user
-meson setup . build.user --buildtype release -Db_lto="${LTO_BOOL}" --prefix "${PREFIX}" \
-     --optimization="$OPT_LVL" -Dc_args="${COMP_FLAGS}" -Dcpp_args="${COMP_FLAGS}" || exit
+meson setup . build.user \
+     --buildtype release \
+     -Db_lto="${LTO_BOOL}" \
+     --prefix "${PREFIX}" \
+     --optimization="$OPT_LVL" \
+     -Dc_args="${COMP_FLAGS}" \
+     -Dcpp_args="${COMP_FLAGS}" || exit
 ccache ninja -vC build.user || exit
 sudo ninja -vC build.user install || exit
 
@@ -378,6 +403,7 @@ cd "$OPUS_DIR" || exit
 update_git
 ./autogen.sh || exit
 CFLAGS="-O${OPT_LVL} ${LTO_FLAG} ${COMP_FLAGS}"
+export CFLAGS
 make clean
 ./configure --prefix="${PREFIX}" || exit
 ccache make -j"${THREADS}" || exit
@@ -390,8 +416,10 @@ if [[ "$BUILD_OTHERS" == "Y" ]]; then
      cd "$X264_DIR" || exit
      update_git
      make clean
-     ./configure --enable-static --enable-pic \
-          --enable-shared "${LTO_CONFIGURE}" --prefix="${PREFIX}" \
+     ./configure --enable-static \
+          --enable-pic \
+          --enable-shared "${LTO_CONFIGURE}" \
+          --prefix="${PREFIX}" \
           --extra-cflags="-O${OPT_LVL} ${COMP_FLAGS}" || exit
      ccache make -j"${THREADS}" || exit
      sudo make install || exit
@@ -409,10 +437,14 @@ if [[ "$BUILD_OTHERS" == "Y" ]]; then
      rm -rf build.user
      mkdir build.user
      cd build.user || exit
-     cmake ../source -DCMAKE_BUILD_TYPE=Release -DNATIVE_BUILD=ON \
-               -G "Unix Makefiles" -DHIGH_BIT_DEPTH=ON \
-               -DENABLE_HDR10_PLUS=ON -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-               -DEXPORT_C_API=ON -DENABLE_SHARED=ON \
+     cmake ../source -DCMAKE_BUILD_TYPE=Release \
+               -DNATIVE_BUILD=ON \
+               -G "Unix Makefiles" \
+               -DHIGH_BIT_DEPTH=ON \
+               -DENABLE_HDR10_PLUS=ON \
+               -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+               -DEXPORT_C_API=ON \
+               -DENABLE_SHARED=ON \
                -DCMAKE_C_FLAGS="${LTO_CONFIGURE} -O${OPT_LVL} ${COMP_FLAGS}" \
                -DCMAKE_CXX_FLAGS="${LTO_CONFIGURE} -O${OPT_LVL} ${COMP_FLAGS}" || exit
      ccache make -j"${THREADS}" || exit
@@ -445,10 +477,13 @@ if [[ "$BUILD_OTHERS" == "Y" ]]; then
      ./configure --prefix="${PREFIX}" \
           --extra-cflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
           --extra-cxxflags="-O${OPT_LVL} $VP_COMP_FLAGS" \
-          --disable-examples --disable-docs \
+          --disable-examples \
+          --disable-docs \
           --enable-better-hw-compatibility \
-          --enable-shared --enable-ccache \
-          --enable-vp8 --enable-vp9 \
+          --enable-shared \
+          --enable-ccache \
+          --enable-vp8 \
+          --enable-vp9 \
           --enable-vp9-highbitdepth
      ccache make -j"${THREADS}" || { env ; exit ; }
      sudo make install || exit
@@ -467,18 +502,23 @@ cd "$FFMPEG_DIR/" || exit
 update_git
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
-./configure --enable-libsvtav1 --prefix="${PREFIX}" \
-     --enable-libdav1d --enable-libopus \
+./configure --enable-libsvtav1 \
+     --prefix="${PREFIX}" \
+     --enable-libdav1d \
+     --enable-libopus \
      $FFMPEG_CONFIGURE_OPT \
-     --arch="$ARCH" --cpu=native \
+     --arch="$ARCH" \
+     --cpu=native \
      --enable-gpl \
      --extra-cflags="-O${OPT_LVL} ${COMP_FLAGS}" \
      --extra-cxxflags="-O${OPT_LVL} ${COMP_FLAGS}" \
-     --disable-doc --disable-htmlpages \
-     --disable-podpages --disable-txtpages || exit
+     --disable-doc \
+     --disable-htmlpages \
+     --disable-podpages \
+     --disable-txtpages || exit
 ccache make -j"${THREADS}" || exit
 sudo make install || exit
-sudo cp ff*_g ${PREFIX}/bin/
+sudo cp ff*_g "${PREFIX}/bin/"
 
 # validate encoders
 hash -r
