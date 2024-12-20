@@ -25,15 +25,6 @@ BUILD_LTO='Y'
 # options for ffmpeg configure
 FFMPEG_CONFIGURE_OPT=""
 
-# compilation job count
-THREADS="$(nproc)"
-
-# for MacOs / Darwin
-if [ "$(uname)" == "Darwin" ] ; then
-     FFMPEG_CONFIGURE_OPT+="--enable-rpath "
-     THREADS="$(sysctl -n hw.ncpu)"
-fi
-
 GREP_FILTER="av1"
 OPTS='hAsvorlO:'
 NUM_OPTS=$(echo -n $OPTS | wc -m)
@@ -168,7 +159,6 @@ fi
 
 # architecture/cpu compile flags
 ARCH=$(uname -m)
-COMP_FLAGS="-I${PREFIX}/include"
 COMP_FLAGS=""
 if [[ "$ARCH" == "x86_64" ]]
 then
@@ -177,6 +167,19 @@ elif [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]
 then
   COMP_FLAGS+=" -mcpu=native"
 fi
+
+# compilation job count
+if commmand -v nproc 2> /dev/null ; then
+     THREADS="$(nproc)"
+fi
+
+# for MacOs / Darwin
+if [ "$(uname)" == "Darwin" ] ; then
+     COMP_FLAGS+=" -I${PREFIX}/include"
+     FFMPEG_CONFIGURE_OPT+="--enable-rpath "
+     THREADS="$(sysctl -n hw.ncpu)"
+fi
+
 echo "COMP_FLAGS: [${COMP_FLAGS}]"
 
 # for ccache
