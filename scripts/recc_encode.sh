@@ -58,7 +58,7 @@ get_bitrate_audio() {
         if [[ "$CODEC_NAME" == 'opus' ]]; then
             BITRATE_CMD+="-c:a:$i copy "
         else
-            BITRATE_CMD+="-filter:a:$i 'aformat=channel_layouts=7.1|5.1|stereo|mono' -c:a:$i libopus -b:a:$i ${BITRATE}k "
+            BITRATE_CMD+="-filter:a:$i aformat=channel_layouts=7.1|5.1|stereo|mono -c:a:$i libopus -b:a:$i ${BITRATE}k "
         fi
     done
     echo "$BITRATE_CMD"
