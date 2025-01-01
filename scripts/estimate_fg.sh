@@ -191,7 +191,7 @@ encode_segments() {
         do
             BASE_VID="$(basename "$VIDEO")"
             OUTPUT_VIDEO="$SEGMENT_DIR/encoded/encoded_${BASE_VID}"
-            encode -i "$VIDEO" -g "$GRAIN" "$OUTPUT_VIDEO"
+            encode -P 10 -g "$GRAIN" -i "$VIDEO" "$OUTPUT_VIDEO"
             BITRATE="$(get_output_bitrate "$OUTPUT_VIDEO")"
             echo -e "\tgrain: $GRAIN, bitrate: $BITRATE" >> "$GRAIN_LOG"
         done

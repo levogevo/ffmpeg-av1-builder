@@ -15,6 +15,7 @@ usage() {
     echo -e "\t[-s] use same container as input, default is mkv"
     echo -e "\t[-v] Print relevant version info"
     echo -e "\t[-g NUM] set film grain for encode"
+    echo -e "\t[-P NUM] override default preset (3)"
     echo -e "\n\t[output_file] if not set, will create at $HOME/"
     echo -e "\n\t[-I] Install this as /usr/local/bin/encode"
     echo -e "\t[-U] Uninstall this from /usr/local/bin/encode"
@@ -120,7 +121,7 @@ encode() {
         echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
     fi
 
-    VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset 3 -g 240"
+    VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset $PRESET -g 240"
     echo "export VIDEO_PARAMS=\"$VIDEO_PARAMS\"" >> "$ENCODE_FILE"
 
     CONVERT_SUBS="$(convert_subs)"
@@ -177,13 +178,14 @@ encode() {
     fi
 }
 
-OPTS='vi:pcsg:IU'
+OPTS='vi:pcsg:P:IU'
 NUM_OPTS="${#OPTS}"
 # default values
 CROP='false'
 PRINT_OUT="false"
 SAME_CONTAINER="false"
 GRAIN=""
+PRESET=3
 # only using -I/U
 MIN_OPT=1
 # using all + output name
@@ -245,6 +247,15 @@ while getopts "$OPTS" flag; do
                 exit 1
             fi
             GRAIN="film-grain=${OPTARG}:film-grain-denoise=1:adaptive-film-grain=1:"
+            OPTS_USED=$((OPTS_USED + 2))
+            ;;
+        P)
+            if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 ]]; then
+                echo "${OPTARG} is not a positive integer"
+                usage
+                exit 1
+            fi
+            PRESET="${OPTARG}"
             OPTS_USED=$((OPTS_USED + 2))
             ;;
         *)
