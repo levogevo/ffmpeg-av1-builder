@@ -105,7 +105,11 @@ update_git() {
      fi
      git config pull.rebase false
      git stash && git stash drop
-     git pull
+     PRE_COMMIT="$(git rev-parse HEAD)"
+     git pull || exit 1
+     POST_COMMIT="$(git rev-parse HEAD)"
+     test "$PRE_COMMIT" != "$POST_COMMIT" && return 1
+     return 0
 }
 
 # set default optimization level
@@ -205,21 +209,14 @@ if [[ "$(uname -r)" =~ "WSL" ]] ; then
      sudo hwclock -s
 fi
 
-# rockchip ffmpeg libs
-# IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
-if [[ "$BUILD_ROCKCHIP" == "Y" ]]
-then
-     # override default ffmpeg directory
-     FFMPEG_DIR+="-rkmpp"
-     git clone --depth "$GIT_DEPTH" https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR"
-
+build_mpp() {
      # build mpp
      git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
-     cd "$RKMPP_DIR/" || exit
-     update_git
+     cd "$RKMPP_DIR/" || return 1
+     update_git && return 0
      rm -rf mpp_build.user
      mkdir mpp_build.user
-     cd mpp_build.user || exit
+     cd mpp_build.user || return 1
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release \
                -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
@@ -227,14 +224,16 @@ then
                -DBUILD_SHARED_LIBS=ON \
                -DBUILD_TEST=OFF \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
-     sudo make install || exit
+               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+}
 
+build_rkga() {     
      # build rga
      git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
-     cd "$RKRGA_DIR" || exit
-     update_git
+     cd "$RKRGA_DIR" || return 1
+     update_git && return 0
      rm -rf rga_build.user
      mkdir rga_build.user
      meson setup . rga_build.user \
@@ -246,74 +245,98 @@ then
           -Dlibrga_demo=false \
           --optimization="$OPT_LVL" \
           -Dc_args="${COMP_FLAGS}" \
-          -Dcpp_args="-fpermissive ${COMP_FLAGS}" || exit
-     ccache ninja -vC rga_build.user || exit
-     sudo ninja -vC rga_build.user install || exit
+          -Dcpp_args="-fpermissive ${COMP_FLAGS}" || return 1
+     ccache ninja -vC rga_build.user || return 1
+     sudo ninja -vC rga_build.user install || return 1
+}
+
+# rockchip ffmpeg libs
+# IS_ROCKCHIP=$(uname -r | grep "rockchip" > /dev/null && echo "yes" || echo "no")
+if [[ "$BUILD_ROCKCHIP" == "Y" ]]
+then
+     # override default ffmpeg directory
+     FFMPEG_DIR+="-rkmpp"
+     git clone --depth "$GIT_DEPTH" https://github.com/nyanmisaka/ffmpeg-rockchip.git "$FFMPEG_DIR"
+
+     build_mpp || exit 1
+     build_rkga || exit 1
+
 fi
 
-if [[ "$BUILD_PSY" == "Y" ]];
-then
+build_dovi() {
      # build dovi_tool
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
-     cd "$DOVI_DIR/" || exit
-     update_git
-     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     cd "$DOVI_DIR/" || return 1
+     update_git && return 0
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
-     sudo cp target/release/dovi_tool "${PREFIX}/bin/" || exit
+     sudo cp target/release/dovi_tool "${PREFIX}/bin/" || return 1
 
      # build libdovi
-     cd dolby_vision || exit
+     cd dolby_vision || return 1
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || return 1
 
+}
+
+build_hdr10plus() {
      # build hdr10plus_tool
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
-     cd "$HDR10_DIR/" || exit
-     update_git
-     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     cd "$HDR10_DIR/" || return 1
+     update_git && return 0
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
-     sudo cp target/release/hdr10plus_tool "${PREFIX}/bin/" || exit
+     sudo cp target/release/hdr10plus_tool "${PREFIX}/bin/" || return 1
 
      # build libhdr10plus
-     cd hdr10plus || exit
+     cd hdr10plus || return 1
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || return 1
+}
 
+build_svt_av1_psy() {
      # build svt-avt-psy
      # clear svt because of unrelated histories error
      rm -rf "$SVT_PSY_DIR"
      git clone --depth "$GIT_DEPTH" https://github.com/gianni-rosato/svt-av1-psy "$SVT_PSY_DIR"
-     cd "$SVT_PSY_DIR/" || exit
-     update_git
-     sudo rm -rf build_svt.user
-     mkdir build_svt.user
-     cd build_svt.user || exit
+     cd "$SVT_PSY_DIR/" || return 1
+     # build in tmp because some artifacts
+     # are installed with sudo and then cannot
+     # be removed later
+     CMAKE_BUILD_DIR="/tmp/$RANDOM"
+     rm -rf "$CMAKE_BUILD_DIR"
+     mkdir "$CMAKE_BUILD_DIR"
+     cd "$CMAKE_BUILD_DIR" || return 1
      make clean
-     cmake .. -DCMAKE_BUILD_TYPE=Release \
-               -DSVT_AV1_LTO="${LTO_SWITCH}" \
-               -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-               -DENABLE_AVX512=ON \
-               -DBUILD_TESTING=OFF \
-               -DCOVERAGE=OFF \
-               -DLIBDOVI_FOUND=1 \
-               -DLIBHDR10PLUS_RS_FOUND=1 \
-               -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
-               -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
+     cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DSVT_AV1_LTO="${LTO_SWITCH}" \
+          -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+          -DENABLE_AVX512=ON \
+          -DBUILD_TESTING=OFF \
+          -DCOVERAGE=OFF \
+          -DLIBDOVI_FOUND=1 \
+          -DLIBHDR10PLUS_RS_FOUND=1 \
+          -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
+          -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
+          -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
+          "$SVT_PSY_DIR" || return 1
+     ccache make -j"${THREADS}" || return 1
      sudo make install
-else
+}
+
+build_svt_av1() {
      # build svt-av1     
      git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
-     cd "$SVT_DIR/" || exit
-     update_git
+     cd "$SVT_DIR/" || return 1
+     update_git && return 0
      rm -rf build_svt.user
      mkdir build_svt.user
-     cd build_svt.user || exit
+     cd build_svt.user || return 1
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release \
                -DSVT_AV1_LTO="${LTO_SWITCH}" \
@@ -323,45 +346,63 @@ else
                -DCOVERAGE=OFF \
                -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
                -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
-     sudo make install || exit
+               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+}
+
+if [[ "$BUILD_PSY" == "Y" ]];
+then
+     build_dovi || exit 1
+     build_hdr10plus || exit 1
+     build_svt_av1_psy || exit 1
+else
+     build_svt_av1 || exit 1
 fi
 
-if [[ "$BUILD_ALL_AV1" == "Y" ]]; then
+build_rav1e() {
      # build rav1e
      git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR"
-     cd "$RAV1E_DIR/" || exit
-     update_git
-     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || exit
+     cd "$RAV1E_DIR/" || return 1
+     update_git && return 0
+     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
-     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || exit
+     sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || return 1
 
+}
+
+build_aom_av1() {
      # build aom
      git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
-     cd "$AOM_DIR/" || exit
-     update_git
+     cd "$AOM_DIR/" || return 1
+     update_git && return 0
      rm -rf build_aom.user
      mkdir build_aom.user
-     cd build_aom.user || exit
+     cd build_aom.user || return 1
      make clean
      cmake .. -DCMAKE_BUILD_TYPE=Release \
                -DBUILD_SHARED_LIBS=ON \
                -DENABLE_TESTS=OFF \
                -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
                -DCMAKE_C_FLAGS="${LTO_FLAG} -O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="${LTO_FLAG} -O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
-     sudo make install || exit
+               -DCMAKE_CXX_FLAGS="${LTO_FLAG} -O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+
+}
+
+if [[ "$BUILD_ALL_AV1" == "Y" ]]; then
+     build_rav1e || exit 1
+     build_aom_av1 || exit 
 fi
 
-if [[ "$BUILD_VMAF" == "Y" ]]; then
+build_vmaf() {
      # build libvmaf
      git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
      cd "$VMAF_DIR/libvmaf" || exit
-     update_git
+     update_git && return 0
      python3 -m virtualenv .venv
      (
           source .venv/bin/activate
@@ -379,64 +420,82 @@ if [[ "$BUILD_VMAF" == "Y" ]]; then
           ccache ninja -vC build.user || exit
           sudo ninja -vC build.user install || exit
      )
+}
+
+if [[ "$BUILD_VMAF" == "Y" ]]; then
+     build_vmaf
 fi
 
-# build dav1d
-git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
-cd "$DAV1D_DIR" || exit
-update_git
-rm -rf build.user
-mkdir build.user
-meson setup . build.user \
-     --buildtype release \
-     -Db_lto="${LTO_BOOL}" \
-     --prefix "${PREFIX}" \
-     --optimization="$OPT_LVL" \
-     -Dc_args="${COMP_FLAGS}" \
-     -Dcpp_args="${COMP_FLAGS}" || exit
-ccache ninja -vC build.user || exit
-sudo ninja -vC build.user install || exit
+build_dav1d() {
+     # build dav1d
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+     cd "$DAV1D_DIR" || return 1
+     update_git && return 0
+     rm -rf build.user
+     mkdir build.user
+     meson setup . build.user \
+          --buildtype release \
+          -Db_lto="${LTO_BOOL}" \
+          --prefix "${PREFIX}" \
+          --optimization="$OPT_LVL" \
+          -Dc_args="${COMP_FLAGS}" \
+          -Dcpp_args="${COMP_FLAGS}" || return 1
+     ccache ninja -vC build.user || return 1
+     sudo ninja -vC build.user install || return 1
+}
 
-# build opus
-git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
-cd "$OPUS_DIR" || exit
-update_git
-./autogen.sh || exit
-CFLAGS="-O${OPT_LVL} ${LTO_FLAG} ${COMP_FLAGS}"
-export CFLAGS
-make clean
-./configure --prefix="${PREFIX}" || exit
-ccache make -j"${THREADS}" || exit
-sudo make install || exit
-unset CFLAGS
+build_opus() {
+     # build opus
+     git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
+     cd "$OPUS_DIR" || return 1
+     update_git && return 0
+     ./autogen.sh || return 1
+     CFLAGS="-O${OPT_LVL} ${LTO_FLAG} ${COMP_FLAGS}"
+     export CFLAGS
+     make clean
+     ./configure --prefix="${PREFIX}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+     unset CFLAGS
+}
 
-if [[ "$BUILD_OTHERS" == "Y" ]]; then
+build_dav1d || exit 1
+build_opus || exit 1
+
+
+build_x264() {
      # build x264
      git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR"
-     cd "$X264_DIR" || exit
-     update_git
+     cd "$X264_DIR" || return 1
+     update_git && return 0
      make clean
      ./configure --enable-static \
           --enable-pic \
           --enable-shared "${LTO_CONFIGURE}" \
           --prefix="${PREFIX}" \
-          --extra-cflags="-O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
-     sudo make install || exit
+          --extra-cflags="-O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
 
+}
+
+build_x265() {
      # build x265
      git clone --depth "$GIT_DEPTH" https://bitbucket.org/multicoreware/x265_git.git "$X265_DIR"
-     cd "$X265_DIR" || exit
+     cd "$X265_DIR" || return 1
      test -d ".no_git" && mv .no_git .git
      test -d ".git" && git stash && git stash drop
      test -d ".git" && git config pull.rebase false
+     PRE_COMMIT="$(git rev-parse HEAD)"
      test -d ".git" && git pull
+     POST_COMMIT="$(git rev-parse HEAD)"
+     test "$PRE_COMMIT" == "$POST_COMMIT" && return 0
      # x265 is dumb and only generates pkgconfig
      # if git is not there ("release")
      mv .git .no_git
      rm -rf build.user
      mkdir build.user
-     cd build.user || exit
+     cd build.user || return 1
      cmake ../source -DCMAKE_BUILD_TYPE=Release \
                -DNATIVE_BUILD=ON \
                -G "Unix Makefiles" \
@@ -446,28 +505,20 @@ if [[ "$BUILD_OTHERS" == "Y" ]]; then
                -DEXPORT_C_API=ON \
                -DENABLE_SHARED=ON \
                -DCMAKE_C_FLAGS="${LTO_CONFIGURE} -O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="${LTO_CONFIGURE} -O${OPT_LVL} ${COMP_FLAGS}" || exit
-     ccache make -j"${THREADS}" || exit
-     sudo make install || exit
-     cd "$X265_DIR" || exit
+               -DCMAKE_CXX_FLAGS="${LTO_CONFIGURE} -O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+     cd "$X265_DIR" || return 1
      # revert git
      mv .no_git .git
 
-     # build gtest
-     git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
-     cd "$GTEST_DIR" || exit
-     update_git
-     rm -rf build
-     mkdir build
-     cd build || exit
-     cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" ../
-     ccache make -j"${THREADS}"
-     sudo make install
+}
 
+build_vpx() {
      # build vpx
      git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
-     cd "$VPX_DIR" || exit
-     update_git
+     cd "$VPX_DIR" || return 1
+     update_git && return 0
      if [[ "$ARCH" == "x86_64" ]]; then
           VP_COMP_FLAGS="${COMP_FLAGS}";
      else
@@ -485,8 +536,25 @@ if [[ "$BUILD_OTHERS" == "Y" ]]; then
           --enable-vp8 \
           --enable-vp9 \
           --enable-vp9-highbitdepth
-     ccache make -j"${THREADS}" || { env ; exit ; }
-     sudo make install || exit
+     ccache make -j"${THREADS}" || return 1
+     sudo make install || return 1
+
+}
+
+if [[ "$BUILD_OTHERS" == "Y" ]]; then
+     build_x264 || exit 1
+     build_x265 || exit 1
+     build_vpx || exit 1
+     # # build gtest
+     # git clone --depth "$GIT_DEPTH" https://github.com/google/googletest "$GTEST_DIR"
+     # cd "$GTEST_DIR" || exit
+     # update_git
+     # rm -rf build
+     # mkdir build
+     # cd build || exit
+     # cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" ../
+     # ccache make -j"${THREADS}"
+     # sudo make install
 fi
 
 if command -v ldconfig ; then
@@ -529,4 +597,9 @@ echo -e "\n  encoders:"
 ffmpeg -encoders 2>&1 | grep -E "$GREP_FILTER" | grep -Ev "configuration|wmav1"
 echo -e "\n  decoders:"
 ffmpeg -decoders 2>&1 | grep -E "$GREP_FILTER" | grep -Ev "configuration|wmav1"
+# output for filter/libvmaf
+if [[ "$BUILD_VMAF" == "Y" ]]; then
+     echo -e "\n  filters:"
+     ffmpeg -filters 2> /dev/null | grep libvmaf
+fi
 exit 0
