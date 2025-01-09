@@ -1,7 +1,14 @@
 # ffmpeg-av1-builder
 
 ## General
-This repository is a simple collection of bash scripts. Scripts have only been tested using Debian/Ubuntu/Arch. If not using apt/pacman, your dependencies will need to be manually installed. With the scripts, you can:
+This repository is a simple collection of bash scripts. Scripts have been tested on:
+- Ubuntu/Debian/Arch x86_64
+- Ubuntu aarch64
+- Windows using WSL Ubuntu/Debian
+- MacOS 15 on Mac Mini M4
+
+If you are not on any of these platforms, you will need to setup dependencies yourself. 
+With the scripts, you can:
 
 1. Install required dependencies using `./scripts/install_deps.sh`
 2. Build and install ffmpeg from source using `./scripts/build.sh`
