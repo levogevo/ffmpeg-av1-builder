@@ -211,9 +211,8 @@ fi
 
 build_mpp() {
      # build mpp
-     git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+     git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR" || { update_git && return 0 ; }
      cd "$RKMPP_DIR/" || return 1
-     update_git && return 0
      rm -rf mpp_build.user
      mkdir mpp_build.user
      cd mpp_build.user || return 1
@@ -231,9 +230,8 @@ build_mpp() {
 
 build_rkga() {     
      # build rga
-     git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+     git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR" || { update_git && return 0 ; }
      cd "$RKRGA_DIR" || return 1
-     update_git && return 0
      rm -rf rga_build.user
      mkdir rga_build.user
      meson setup . rga_build.user \
@@ -265,9 +263,8 @@ fi
 
 build_dovi() {
      # build dovi_tool
-     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR" || { update_git && return 0 ; }
      cd "$DOVI_DIR/" || return 1
-     update_git && return 0
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
@@ -283,9 +280,8 @@ build_dovi() {
 
 build_hdr10plus() {
      # build hdr10plus_tool
-     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR" || { update_git && return 0 ; }
      cd "$HDR10_DIR/" || return 1
-     update_git && return 0
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
@@ -331,9 +327,8 @@ build_svt_av1_psy() {
 
 build_svt_av1() {
      # build svt-av1     
-     git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+     git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" || { update_git && return 0 ; }
      cd "$SVT_DIR/" || return 1
-     update_git && return 0
      rm -rf build_svt.user
      mkdir build_svt.user
      cd build_svt.user || return 1
@@ -362,9 +357,8 @@ fi
 
 build_rav1e() {
      # build rav1e
-     git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR" || { update_git && return 0 ; }
      cd "$RAV1E_DIR/" || return 1
-     update_git && return 0
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
@@ -375,9 +369,8 @@ build_rav1e() {
 
 build_aom_av1() {
      # build aom
-     git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
+     git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR" || { update_git && return 0 ; }
      cd "$AOM_DIR/" || return 1
-     update_git && return 0
      rm -rf build_aom.user
      mkdir build_aom.user
      cd build_aom.user || return 1
@@ -400,9 +393,8 @@ fi
 
 build_vmaf() {
      # build libvmaf
-     git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR" || { update_git && return 0 ; }
      cd "$VMAF_DIR/libvmaf" || exit
-     update_git && return 0
      python3 -m virtualenv .venv
      (
           source .venv/bin/activate
@@ -428,9 +420,8 @@ fi
 
 build_dav1d() {
      # build dav1d
-     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" || { update_git && return 0 ; }
      cd "$DAV1D_DIR" || return 1
-     update_git && return 0
      rm -rf build.user
      mkdir build.user
      meson setup . build.user \
@@ -446,9 +437,8 @@ build_dav1d() {
 
 build_opus() {
      # build opus
-     git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
+     git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR" || { update_git && return 0 ; }
      cd "$OPUS_DIR" || return 1
-     update_git && return 0
      ./autogen.sh || return 1
      CFLAGS="-O${OPT_LVL} ${LTO_FLAG} ${COMP_FLAGS}"
      export CFLAGS
@@ -465,9 +455,8 @@ build_opus || exit 1
 
 build_x264() {
      # build x264
-     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR"
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR" || { update_git && return 0 ; }
      cd "$X264_DIR" || return 1
-     update_git && return 0
      make clean
      ./configure --enable-static \
           --enable-pic \
@@ -516,9 +505,8 @@ build_x265() {
 
 build_vpx() {
      # build vpx
-     git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" 
+     git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"  || { update_git && return 0 ; }
      cd "$VPX_DIR" || return 1
-     update_git && return 0
      if [[ "$ARCH" == "x86_64" ]]; then
           VP_COMP_FLAGS="${COMP_FLAGS}";
      else
@@ -565,9 +553,8 @@ if command -v ldconfig ; then
 fi
 
 # build ffmpeg
-git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
+git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR" || update_git
 cd "$FFMPEG_DIR/" || exit
-update_git
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
 ./configure --enable-libsvtav1 \
