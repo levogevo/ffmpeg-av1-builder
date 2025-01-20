@@ -2,3 +2,4 @@ benchmark
 repos
 out
 .last_opts
+.good_commits
