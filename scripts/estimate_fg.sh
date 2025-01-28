@@ -239,14 +239,9 @@ plot() {
         echo -e "$GRAIN\t$AVG_BITRATE" >> "$PLOT"
     done
 
-    # set terminal size
-    TERMINAL="$(tty)"
-    COLUMNS=$(stty -a <"$TERMINAL" | grep -Po '(?<=columns )\d+')
-    ROWS=$(stty -a <"$TERMINAL" | grep -Po '(?<=rows )\d+')
-
     # plot data
     gnuplot -p -e " \
-    set terminal dumb size $COLUMNS, $ROWS; \
+    set terminal dumb size $COLUMNS, $LINES; \
     set autoscale; \
     set style line 1 \
         linecolor rgb '#0060ad' \
