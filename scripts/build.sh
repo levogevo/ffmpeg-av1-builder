@@ -123,7 +123,7 @@ X264_DIR="$REPOS_DIR/x264"
 X265_DIR="$REPOS_DIR/x265"
 GTEST_DIR="$REPOS_DIR/googletest"
 VPX_DIR="$REPOS_DIR/vpx"
-mkdir "$REPOS_DIR"
+test -d "$REPOS_DIR" || mkdir "$REPOS_DIR"
 
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
@@ -315,6 +315,7 @@ build_svt_av1_psy() {
      # svt-av1-psy cannot be cleanly updated 
      # due to histories error
      local GIT_REPO_URL='https://github.com/gianni-rosato/svt-av1-psy'
+     local CMAKE_BUILD_DIR="$SVT_PSY_DIR/build_svt.user"
      git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR" || \
           {
                cd "$SVT_PSY_DIR/" || return 1
@@ -325,15 +326,14 @@ build_svt_av1_psy() {
                     rm -rf "$SVT_PSY_DIR"
                     git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR"
                else
-                    return 0;
+                    grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" && \
+                         cd "$CMAKE_BUILD_DIR" && \
+                         sudo make install && \
+                         set_commit_status && \
+                         return 0
                fi               
           }
-     
-     # build in tmp because some artifacts
-     # are installed with sudo and then cannot
-     # be removed later
-     CMAKE_BUILD_DIR="/tmp/$RANDOM"
-     rm -rf "$CMAKE_BUILD_DIR"
+     sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
      cd "$CMAKE_BUILD_DIR" || return 1
      make clean
@@ -352,26 +352,36 @@ build_svt_av1_psy() {
           "$SVT_PSY_DIR" || return 1
      ccache make -j"${THREADS}" || return 1
      sudo make install
+     cd "$SVT_PSY_DIR/" || return 1
      set_commit_status
 }
 
 build_svt_av1() {
-     # build svt-av1     
+     # build svt-av1
+     local CMAKE_BUILD_DIR="$SVT_DIR/build_svt.user"
      git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" || \
-          { cd "$SVT_DIR/" && check_for_rebuild && return 0 ; }
-     rm -rf build_svt.user
-     mkdir build_svt.user
-     cd build_svt.user || return 1
+          { 
+               cd "$SVT_DIR/" && check_for_rebuild && \
+                    cd "$CMAKE_BUILD_DIR" && \
+                    sudo make install && \
+                    set_commit_status && \
+                    return 0 ;
+          }
+     sudo rm -rf "$CMAKE_BUILD_DIR"
+     mkdir "$CMAKE_BUILD_DIR"
+     cd "$CMAKE_BUILD_DIR" || return 1
      make clean
-     cmake .. -DCMAKE_BUILD_TYPE=Release \
-               -DSVT_AV1_LTO="${LTO_SWITCH}" \
-               -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-               -DENABLE_AVX512=ON \
-               -DBUILD_TESTING=OFF \
-               -DCOVERAGE=OFF \
-               -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
-               -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
-               -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" || return 1
+     cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DSVT_AV1_LTO="${LTO_SWITCH}" \
+          -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+          -DENABLE_AVX512=ON \
+          -DBUILD_TESTING=OFF \
+          -DCOVERAGE=OFF \
+          -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
+          -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
+          -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
+          "$SVT_DIR/" || return 1
      ccache make -j"${THREADS}" || return 1
      sudo make install || return 1
      set_commit_status
