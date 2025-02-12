@@ -30,7 +30,7 @@ get_crop() {
     local DURATION="$(get_duration "$INPUT")"
     local TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
     # get cropdetect value for first 1/5 of input
-    local TIME_ENC="$(echo "$TOTAL_SECONDS / 5" | bc)"
+    local TIME_ENC="$(echo "$TOTAL_SECONDS / 2" | bc)"
     ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
         -map '0:v:0' -filter:v:0 'cropdetect=limit=64:round=16:skip=2:reset_count=0' \
         -codec:v 'wrapped_avframe' -f 'null' '/dev/null' -y 2>&1 | grep -o crop=.* \
@@ -101,7 +101,7 @@ encode() {
     echo -e '#!/usr/bin/env bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}sharpness=3:psy-rd=1:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}sharpness=3:spy-rd=1:psy-rd=1:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")

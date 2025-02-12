@@ -226,8 +226,9 @@ git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 
 build_mpp() {
      # build mpp
-     git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR" || \
-          { cd "$RKMPP_DIR/" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" -b jellyfin-mpp https://github.com/nyanmisaka/mpp.git "$RKMPP_DIR"
+     cd "$RKMPP_DIR/" || return 1
+     check_for_rebuild && return 0
      rm -rf mpp_build.user
      mkdir mpp_build.user
      cd mpp_build.user || return 1
@@ -245,8 +246,9 @@ build_mpp() {
 
 build_rkga() {     
      # build rga
-     git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR" || \
-          { cd "$RKRGA_DIR" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" -b jellyfin-rga https://github.com/nyanmisaka/rk-mirrors.git "$RKRGA_DIR"
+     cd "$RKRGA_DIR" || return 1 
+     check_for_rebuild && return 0
      rm -rf rga_build.user
      mkdir rga_build.user
      meson setup . rga_build.user \
@@ -278,9 +280,9 @@ fi
 
 build_dovi() {
      # build dovi_tool
-     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR" || \
-          { cd "$DOVI_DIR/" && check_for_rebuild && return 0 ; }
-     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
+     cd "$DOVI_DIR" || return 1 
+     check_for_rebuild && return 0
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
@@ -295,9 +297,9 @@ build_dovi() {
 
 build_hdr10plus() {
      # build hdr10plus_tool
-     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR" || \
-          { cd "$HDR10_DIR/" && check_for_rebuild && return 0 ; }
-     rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
+     git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
+     cd "$HDR10_DIR" || return 1 
+     check_for_rebuild && return 0
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
@@ -316,23 +318,21 @@ build_svt_av1_psy() {
      # due to histories error
      local GIT_REPO_URL='https://github.com/gianni-rosato/svt-av1-psy'
      local CMAKE_BUILD_DIR="$SVT_PSY_DIR/build_svt.user"
-     git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR" || \
-          {
-               cd "$SVT_PSY_DIR/" || return 1
-               REMOTE_HEAD_SHA="$(git ls-remote "$GIT_REPO_URL" HEAD | awk '{ print $1 }')"
-               CURR_HEAD_SHA="$(git rev-parse HEAD)"
-               if [[ "$REMOTE_HEAD_SHA" != "$CURR_HEAD_SHA" ]]; then
-                    # wipe and start over
-                    rm -rf "$SVT_PSY_DIR"
-                    git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR"
-               else
-                    grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" && \
-                         cd "$CMAKE_BUILD_DIR" && \
-                         sudo make install && \
-                         set_commit_status && \
-                         return 0
-               fi               
-          }
+     REMOTE_HEAD_SHA="$(git ls-remote "$GIT_REPO_URL" HEAD | awk '{ print $1 }')"
+     CURR_HEAD_SHA="$(git -C "$SVT_PSY_DIR" rev-parse HEAD)"
+     if [[ "$REMOTE_HEAD_SHA" != "$CURR_HEAD_SHA" ]]; then
+          # wipe and start over
+          rm -rf "$SVT_PSY_DIR"
+          git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR"
+     fi
+     cd "$SVT_PSY_DIR" || return 1
+     # check for rebuild
+     grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" && \
+          cd "$CMAKE_BUILD_DIR" && \
+          sudo make install && \
+          set_commit_status && \
+          return 0
+
      sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
      cd "$CMAKE_BUILD_DIR" || return 1
@@ -359,14 +359,13 @@ build_svt_av1_psy() {
 build_svt_av1() {
      # build svt-av1
      local CMAKE_BUILD_DIR="$SVT_DIR/build_svt.user"
-     git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR" || \
-          { 
-               cd "$SVT_DIR/" && check_for_rebuild && \
-                    cd "$CMAKE_BUILD_DIR" && \
-                    sudo make install && \
-                    set_commit_status && \
-                    return 0 ;
-          }
+     git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
+     cd "$SVT_DIR" || return 1
+     check_for_rebuild && \
+          cd "$CMAKE_BUILD_DIR" && \
+          sudo make install && \
+          set_commit_status && \
+          return 0
      sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
      cd "$CMAKE_BUILD_DIR" || return 1
@@ -398,8 +397,9 @@ fi
 
 build_rav1e() {
      # build rav1e
-     git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR" || \
-          { cd "$RAV1E_DIR/" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" https://github.com/xiph/rav1e "$RAV1E_DIR"
+     cd "$RAV1E_DIR" || return 1 
+     check_for_rebuild && return 0
      rm -rf ffmpeg_build.user && mkdir ffmpeg_build.user || return 1
      source "$HOME/.cargo/env" # for good measure
      cargo clean
@@ -410,8 +410,9 @@ build_rav1e() {
 
 build_aom_av1() {
      # build aom
-     git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR" || \
-          { cd "$AOM_DIR/" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" https://aomedia.googlesource.com/aom "$AOM_DIR"
+     cd "$AOM_DIR" || return 1 
+     check_for_rebuild && return 0
      rm -rf build_aom.user
      mkdir build_aom.user
      cd build_aom.user || return 1
@@ -435,7 +436,8 @@ fi
 build_vmaf() {
      # build libvmaf
      git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR" || \
-          { cd "$VMAF_DIR/libvmaf" && check_for_rebuild && return 0 ; }
+     cd "$VMAF_DIR/libvmaf" || return 1
+     check_for_rebuild && return 0
      python3 -m virtualenv .venv
      (
           source .venv/bin/activate
@@ -462,8 +464,9 @@ fi
 
 build_dav1d() {
      # build dav1d
-     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR" || \
-          { cd "$DAV1D_DIR" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/dav1d.git "$DAV1D_DIR"
+     cd "$DAV1D_DIR" || return 1
+     check_for_rebuild && return 0
      rm -rf build.user
      mkdir build.user
      meson setup . build.user \
@@ -480,8 +483,9 @@ build_dav1d() {
 
 build_opus() {
      # build opus
-     git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR" || \
-          { cd "$OPUS_DIR" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" https://github.com/xiph/opus.git "$OPUS_DIR"
+     cd "$OPUS_DIR" || return 1
+     check_for_rebuild && return 0
      ./autogen.sh || return 1
      CFLAGS="-O${OPT_LVL} ${LTO_FLAG} ${COMP_FLAGS}"
      export CFLAGS
@@ -499,8 +503,9 @@ build_opus || exit 1
 
 build_x264() {
      # build x264
-     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR" || \
-          { cd "$X264_DIR" && check_for_rebuild && return 0 ; }
+     git clone --depth "$GIT_DEPTH" https://code.videolan.org/videolan/x264.git "$X264_DIR"
+     cd "$X264_DIR" || return 1
+     check_for_rebuild && return 0
      make clean
      ./configure --enable-static \
           --enable-pic \
@@ -545,7 +550,8 @@ build_x265() {
 build_vpx() {
      # build vpx
      git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" || \
-          { cd "$VPX_DIR" && check_for_rebuild && return 0 ; }
+     cd "$VPX_DIR" || return 1 
+     check_for_rebuild && return 0
      if [[ "$ARCH" == "x86_64" ]]; then
           VP_COMP_FLAGS="${COMP_FLAGS}";
      else
