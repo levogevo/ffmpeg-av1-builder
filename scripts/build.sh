@@ -125,6 +125,12 @@ GTEST_DIR="$REPOS_DIR/googletest"
 VPX_DIR="$REPOS_DIR/vpx"
 test -d "$REPOS_DIR" || mkdir "$REPOS_DIR"
 
+# test if options are different
+# so that rebuild is forced
+if [[ "$(sort "$BASE_DIR/.last_opts")" != "$(echo "$@" | sort )" ]]; then
+     FORCE_REBUILD=1
+fi
+
 # save options use
 echo "$@" > "$BASE_DIR/.last_opts"
 
@@ -147,10 +153,11 @@ check_for_rebuild() {
      fi
      git config pull.rebase false
      git stash && git stash drop
-     PRE_COMMIT="$(git rev-parse HEAD)"
      git pull || exit 1
-     POST_COMMIT="$(git rev-parse HEAD)"
-     test "$PRE_COMMIT" != "$POST_COMMIT" && return 1
+     LATEST_REMOTE="$(git ls-remote "$(git config --get remote.origin.url)" HEAD | awk '{ print $1 }')"
+     CURRENT_HEAD="$(git rev-parse HEAD)"
+     test "$FORCE_REBUILD" == '1' && return 1
+     test "$LATEST_REMOTE" != "$CURRENT_HEAD" && return 1
      # check if project built successfully
      grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" || return 1
      return 0
@@ -313,7 +320,7 @@ build_hdr10plus() {
 }
 
 build_svt_av1_psy() {
-     # build svt-avt-psy
+     # build svt-av1-psy
      # svt-av1-psy cannot be cleanly updated 
      # due to histories error
      local GIT_REPO_URL='https://github.com/gianni-rosato/svt-av1-psy'
@@ -326,8 +333,8 @@ build_svt_av1_psy() {
           git clone --depth "$GIT_DEPTH" "$GIT_REPO_URL" "$SVT_PSY_DIR"
      fi
      cd "$SVT_PSY_DIR" || return 1
-     # check for rebuild
-     grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" && \
+
+     check_for_rebuild && \
           cd "$CMAKE_BUILD_DIR" && \
           sudo make install && \
           set_commit_status && \
@@ -336,7 +343,6 @@ build_svt_av1_psy() {
      sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
      cd "$CMAKE_BUILD_DIR" || return 1
-     make clean
      cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DSVT_AV1_LTO="${LTO_SWITCH}" \
@@ -350,6 +356,7 @@ build_svt_av1_psy() {
           -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
           -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
           "$SVT_PSY_DIR" || return 1
+     make clean
      ccache make -j"${THREADS}" || return 1
      sudo make install
      cd "$SVT_PSY_DIR/" || return 1
@@ -361,15 +368,16 @@ build_svt_av1() {
      local CMAKE_BUILD_DIR="$SVT_DIR/build_svt.user"
      git clone --depth "$GIT_DEPTH" https://gitlab.com/AOMediaCodec/SVT-AV1.git "$SVT_DIR"
      cd "$SVT_DIR" || return 1
+
      check_for_rebuild && \
           cd "$CMAKE_BUILD_DIR" && \
           sudo make install && \
           set_commit_status && \
           return 0
+
      sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
      cd "$CMAKE_BUILD_DIR" || return 1
-     make clean
      cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DSVT_AV1_LTO="${LTO_SWITCH}" \
@@ -381,6 +389,7 @@ build_svt_av1() {
           -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
           -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
           "$SVT_DIR/" || return 1
+     make clean
      ccache make -j"${THREADS}" || return 1
      sudo make install || return 1
      set_commit_status

@@ -32,7 +32,7 @@ get_crop() {
     # get cropdetect value for first 1/5 of input
     local TIME_ENC="$(echo "$TOTAL_SECONDS / 2" | bc)"
     ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
-        -map '0:v:0' -filter:v:0 'cropdetect=limit=64:round=16:skip=2:reset_count=0' \
+        -map '0:v:0' -filter:v:0 'cropdetect=limit=100:round=16:skip=2:reset_count=0' \
         -codec:v 'wrapped_avframe' -f 'null' '/dev/null' -y 2>&1 | grep -o crop=.* \
         | sort -bh | uniq -c | sort -bh | tail -n1 | grep -o "crop=.*"
 }
