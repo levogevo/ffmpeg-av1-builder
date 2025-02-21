@@ -143,6 +143,14 @@ set_commit_status() {
      grep -q "$(good_commit_output)" "$GOOD_COMMIT_BUILDS" || good_commit_output >> "$GOOD_COMMIT_BUILDS"
 }
 
+check_edition2024() {
+     if grep -q "edition2024" Cargo.toml ; then
+          echo "edition2024 already enabled"
+          return 0
+     fi
+     echo -e 'cargo-features = ["edition2024"]\n\n'"$(cat Cargo.toml)" > Cargo.toml || return 1
+     return 0
+}
 
 GIT_DEPTH='5'
 check_for_rebuild() {
@@ -290,6 +298,7 @@ build_dovi() {
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/dovi_tool "$DOVI_DIR"
      cd "$DOVI_DIR" || return 1 
      check_for_rebuild && return 0
+     check_edition2024
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
@@ -297,6 +306,7 @@ build_dovi() {
 
      # build libdovi
      cd dolby_vision || return 1
+     check_edition2024
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
      sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || return 1
      set_commit_status
@@ -307,6 +317,7 @@ build_hdr10plus() {
      git clone --depth "$GIT_DEPTH" https://github.com/quietvoid/hdr10plus_tool "$HDR10_DIR"
      cd "$HDR10_DIR" || return 1 
      check_for_rebuild && return 0
+     check_edition2024
      source "$HOME/.cargo/env" # for good measure
      cargo clean
      RUSTFLAGS="-C target-cpu=native" ccache cargo build --release
@@ -314,6 +325,7 @@ build_hdr10plus() {
 
      # build libhdr10plus
      cd hdr10plus || return 1
+     check_edition2024
      RUSTFLAGS="-C target-cpu=native" ccache cargo cbuild --release
      sudo -E bash -lc "cargo cinstall --prefix=${PREFIX} --release" || return 1
      set_commit_status
@@ -350,8 +362,8 @@ build_svt_av1_psy() {
           -DENABLE_AVX512=ON \
           -DBUILD_TESTING=OFF \
           -DCOVERAGE=OFF \
-          -DLIBDOVI_FOUND=1 \
-          -DLIBHDR10PLUS_RS_FOUND=1 \
+          -DLIBDOVI_FOUND=0 \
+          -DLIBHDR10PLUS_RS_FOUND=0 \
           -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
           -DCMAKE_C_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \
           -DCMAKE_CXX_FLAGS="-O${OPT_LVL} ${COMP_FLAGS}" \

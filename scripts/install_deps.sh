@@ -15,14 +15,14 @@ PACMAN_DEP_NAMES="base-devel ninja python-pip"
 BREW_DEP_NAMES="pkgconf mkvtoolnix"
 
 install_deps() {
-  if command -v nala ; then
+  if command -v nala > /dev/null ; then
     echo "Installing with nala"
     sudo nala update
     sudo nala install -y $COMMON_DEP_NAMES \
       $COMMON_DEP_NAMES_LINUX \
       $APT_DEP_NAMES && return 0
   fi
-  if command -v apt ; then
+  if command -v apt > /dev/null ; then
     echo "Installing with apt"
     sudo apt-get update
     sudo apt-get install -y $COMMON_DEP_NAMES \
@@ -30,14 +30,14 @@ install_deps() {
       $APT_DEP_NAMES || exit 1
     return 0
   fi
-  if command -v pacman ; then
+  if command -v pacman > /dev/null ; then
     echo "Installing with pacman"
-    sudo pacman -S $COMMON_DEP_NAMES \
+    sudo pacman --needed -S $COMMON_DEP_NAMES \
       $COMMON_DEP_NAMES_LINUX \
       $PACMAN_DEP_NAMES --noconfirm || exit 1
     return 0
   fi
-  if command -v brew ; then
+  if command -v brew > /dev/null ; then
     echo "Installing with brew"
     brew install $COMMON_DEP_NAMES \
       $BREW_DEP_NAMES || exit 1
@@ -48,7 +48,13 @@ install_deps() {
 
 install_deps
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y
+if ! command -v rustup > /dev/null ; then
+  echo "Installing rustup"
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+fi
+
+rustup default nightly
+rustup update nightly
 source "$HOME/.cargo/env"
 cargo install cargo-c || exit 1
 
