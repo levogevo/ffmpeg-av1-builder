@@ -161,7 +161,7 @@ check_for_rebuild() {
      fi
      git config pull.rebase false
      git stash && git stash drop
-     git pull || exit 1
+     git pull || return 1
      LATEST_REMOTE="$(git ls-remote "$(git config --get remote.origin.url)" HEAD | awk '{ print $1 }')"
      CURRENT_HEAD="$(git rev-parse HEAD)"
      test "$FORCE_REBUILD" == '1' && return 1
@@ -237,7 +237,7 @@ if [[ "$(uname -r)" =~ "WSL" ]] ; then
 fi
 
 # clone ffmpeg
-git clone --depth "$GIT_DEPTH" https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
+git clone https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 
 build_mpp() {
      # build mpp
@@ -622,6 +622,10 @@ fi
 cd "$FFMPEG_DIR/" && check_for_rebuild
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
+
+# TODO: remove after HEVC decoding is not broken in master
+git checkout e20ee9f9aec94f8cea1bf4fd8ed3fb096fb205e5
+
 ./configure --enable-libsvtav1 \
      --prefix="${PREFIX}" \
      --enable-libdav1d \

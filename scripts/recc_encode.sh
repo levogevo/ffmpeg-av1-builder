@@ -117,7 +117,10 @@ encode() {
     echo "export VIDEO_ENCODER=\"$VIDEO_ENCODER\"" >> "$ENCODE_FILE"
 
     if [[ "$CROP" == "true" ]]; then
-        VIDEO_CROP="-vf \"$(get_crop)\""
+        CROP_VALUE="$(get_crop)"
+        # crop needs to be defined
+        test "$CROP_VALUE" == '' && { echo 'Failed to get crop' ; exit 1 ; }
+        VIDEO_CROP="-vf \"$CROP_VALUE\""
         echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
     fi
 
