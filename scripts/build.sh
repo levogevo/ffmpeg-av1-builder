@@ -173,6 +173,7 @@ check_for_rebuild() {
 
 # prefix to install
 PREFIX='/usr/local'
+FFMPEG_CONFIGURE_OPT+="--enable-rpath "
 
 # lto mess
 if [[ "$BUILD_LTO" == 'Y' ]]; then
@@ -207,7 +208,6 @@ fi
 # for MacOs / Darwin
 if [ "$(uname)" == "Darwin" ] ; then
      COMP_FLAGS+=" -I${PREFIX}/include"
-     FFMPEG_CONFIGURE_OPT+="--enable-rpath "
      THREADS="$(sysctl -n hw.ncpu)"
 fi
 
@@ -409,8 +409,8 @@ build_svt_av1() {
 
 if [[ "$BUILD_PSY" == "Y" ]];
 then
-     build_dovi || exit 1
-     build_hdr10plus || exit 1
+     # build_dovi || exit 1
+     # build_hdr10plus || exit 1
      build_svt_av1_psy || exit 1
 else
      build_svt_av1 || exit 1
