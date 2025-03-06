@@ -456,7 +456,7 @@ fi
 
 build_vmaf() {
      # build libvmaf
-     git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR" || \
+     git clone --depth "$GIT_DEPTH" https://github.com/Netflix/vmaf "$VMAF_DIR"
      cd "$VMAF_DIR/libvmaf" || return 1
      check_for_rebuild && return 0
      python3 -m virtualenv .venv
@@ -570,7 +570,7 @@ build_x265() {
 
 build_vpx() {
      # build vpx
-     git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR" || \
+     git clone --depth "$GIT_DEPTH" https://chromium.googlesource.com/webm/libvpx.git "$VPX_DIR"
      cd "$VPX_DIR" || return 1 
      check_for_rebuild && return 0
      if [[ "$ARCH" == "x86_64" ]]; then
