@@ -623,9 +623,6 @@ cd "$FFMPEG_DIR/" && check_for_rebuild
 export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig:$PKG_CONFIG_PATH"
 make clean
 
-# TODO: remove after HEVC decoding is not broken in master
-git checkout e20ee9f9aec94f8cea1bf4fd8ed3fb096fb205e5
-
 ./configure --enable-libsvtav1 \
      --prefix="${PREFIX}" \
      --enable-libdav1d \
