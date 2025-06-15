@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Enable extended pattern matching for ?() and +() operators
+shopt -s extglob
+
 # this is simply my recommended encoding method.
 # do not take this as a holy grail.
 

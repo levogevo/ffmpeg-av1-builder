@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# Enable extended pattern matching for ?() and +() operators
+shopt -s extglob
+
 usage() {
      echo "./scripts/build.sh [options]"
      echo -e "\th:\tdisplay this help output"
@@ -201,7 +204,7 @@ then
 fi
 
 # compilation job count
-if commmand -v nproc 2> /dev/null ; then
+if command -v nproc 2> /dev/null ; then
      THREADS="$(nproc)"
 fi
 
