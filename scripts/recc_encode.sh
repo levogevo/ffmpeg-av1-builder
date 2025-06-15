@@ -19,6 +19,7 @@ usage() {
     echo -e "\t[-v] Print relevant version info"
     echo -e "\t[-g NUM] set film grain for encode"
     echo -e "\t[-P NUM] override default preset (3)"
+    echo -e "\t[-C NUM] override default CRF (25)"
     echo -e "\n\t[output_file] if not set, will create at $HOME/"
     echo -e "\n\t[-I] Install this as /usr/local/bin/encode"
     echo -e "\t[-U] Uninstall this from /usr/local/bin/encode"
@@ -26,7 +27,7 @@ usage() {
 }
 
 get_duration() {
-    ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
+    /usr/local/bin/ffmpeg -i "$1" 2>&1 | grep "Duration" | awk '{print $2}' | tr -d ,
 }
 
 get_crop() {
@@ -34,7 +35,7 @@ get_crop() {
     local TOTAL_SECONDS="$(echo "$DURATION" | awk -F: '{ print ($1 * 3600) + ($2 * 60) + $3 }')"
     # get cropdetect value for first 1/5 of input
     local TIME_ENC="$(echo "$TOTAL_SECONDS / 2" | bc)"
-    ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
+    /usr/local/bin/ffmpeg -hide_banner -ss 0 -discard 'nokey' -i "$INPUT" -t "$TIME_ENC" \
         -map '0:v:0' -filter:v:0 'cropdetect=limit=100:round=16:skip=2:reset_count=0' \
         -codec:v 'wrapped_avframe' -f 'null' '/dev/null' -y 2>&1 | grep -o crop=.* \
         | sort -bh | uniq -c | sort -bh | tail -n1 | grep -o "crop=.*"
@@ -79,7 +80,7 @@ convert_subs() {
 }
 
 ffmpeg_version() {
-    ffmpeg -version 2>&1 | head -n 1 | grep version | cut -d' ' -f1-3
+    /usr/local/bin/ffmpeg -version 2>&1 | head -n 1 | grep version | cut -d' ' -f1-3
 }
 
 video_enc_version() {
@@ -89,9 +90,9 @@ video_enc_version() {
 audio_enc_version() {
     local AUDIO_ENC_VERSION
     if command -v ldd > /dev/null ; then
-        AUDIO_ENC_VERSION="$(ldd "$(which ffmpeg)" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
+        AUDIO_ENC_VERSION="$(ldd "/usr/local/bin/ffmpeg" | grep -i libopus | cut -d' ' -f3 | xargs readlink)"
     elif command -v otool > /dev/null ; then
-        AUDIO_ENC_VERSION="$(otool -L $(which ffmpeg) | grep libopus | tr -d ')' | awk -F' ' '{print $NF}')"
+        AUDIO_ENC_VERSION="$(otool -L /usr/local/bin/ffmpeg | grep libopus | tr -d ')' | awk -F' ' '{print $NF}')"
     fi
     local AUDIO_ENC_GIT="$(cd "$BUILDER_DIR/repos/opus" && git rev-parse --short HEAD)"
     test "$AUDIO_ENC_GIT" != '' && AUDIO_ENC_VERSION+="-g${AUDIO_ENC_GIT}"
@@ -104,14 +105,14 @@ encode() {
     echo -e '#!/usr/bin/env bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}sharpness=3:spy-rd=1:psy-rd=1:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}sharpness=3:spy-rd=1:psy-rd=1:tune=3:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")
     echo "export UNMAP=\"$UNMAP\"" >> "$ENCODE_FILE"
 
-    # AUDIO_FORMAT='-af aformat=channel_layouts=7.1|5.1|stereo|mono'
-    # echo "export AUDIO_FORMAT='$AUDIO_FORMAT'" >> "$ENCODE_FILE"
+    #AUDIO_FORMAT=""
+    #echo "export AUDIO_FORMAT=\"$AUDIO_FORMAT\"" >> "$ENCODE_FILE"
     
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
     echo "export AUDIO_BITRATE=\"$AUDIO_BITRATE\"" >> "$ENCODE_FILE"
@@ -127,7 +128,7 @@ encode() {
         echo "export VIDEO_CROP=\"$VIDEO_CROP\"" >> "$ENCODE_FILE"
     fi
 
-    VIDEO_PARAMS="-pix_fmt yuv420p10le -crf 25 -preset $PRESET -g 240"
+    VIDEO_PARAMS="-pix_fmt yuv420p10le -crf $CRF -preset $PRESET -g 240"
     echo "export VIDEO_PARAMS=\"$VIDEO_PARAMS\"" >> "$ENCODE_FILE"
 
     CONVERT_SUBS="$(convert_subs)"
@@ -151,7 +152,7 @@ encode() {
     NL=' \\\n\t'
     echo >> "$ENCODE_FILE"
 
-    echo -e ffmpeg -i \""$INPUT"\" $NL \
+    echo -e /usr/local/bin/ffmpeg -i \""$INPUT"\" $NL \
         -map 0 \$UNMAP \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
@@ -160,7 +161,7 @@ encode() {
         -metadata \"\$ADD_METADATA\" $NL \
         \$FFMPEG_PARAMS -dolbyvision 1 -svtav1-params \
         $NL \"\$SVT_PARAMS\" \"\$OUTPUT\" "||" $NL \
-        ffmpeg -i \""$INPUT"\" $NL \
+        /usr/local/bin/ffmpeg -i \""$INPUT"\" $NL \
         -map 0 \$UNMAP \$VIDEO_CROP \
         \$AUDIO_FORMAT \$AUDIO_BITRATE $NL \
         -metadata \"\$FFMPEG_VERSION\" \
@@ -184,7 +185,7 @@ encode() {
     fi
 }
 
-OPTS='vi:pcsg:P:IU'
+OPTS='vi:pcsg:P:C:IU'
 NUM_OPTS="${#OPTS}"
 # default values
 CROP='false'
@@ -192,6 +193,7 @@ PRINT_OUT="false"
 SAME_CONTAINER="false"
 GRAIN=""
 PRESET=3
+CRF=25
 # only using -I/U
 MIN_OPT=1
 # using all + output name
@@ -264,6 +266,15 @@ while getopts "$OPTS" flag; do
             PRESET="${OPTARG}"
             OPTS_USED=$((OPTS_USED + 2))
             ;;
+        C)
+            if [[ ${OPTARG} != ?(-)+([[:digit:]]) || ${OPTARG} -lt 0 || ${OPTARG} -gt 63 ]]; then
+                echo "${OPTARG} is not a valid CRF value (0-63)"
+                usage
+                exit 1
+            fi
+            CRF="${OPTARG}"
+            OPTS_USED=$((OPTS_USED + 2))
+            ;;
         *)
             echo "wrong flags given"
             usage
@@ -301,6 +312,6 @@ else
 fi
 
 echo
-echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, GRAIN: $GRAIN, OUTPUT: $OUTPUT"
+echo "INPUT: $INPUT, PRINT_OUT: $PRINT_OUT, GRAIN: $GRAIN, PRESET: $PRESET, CRF: $CRF, OUTPUT: $OUTPUT"
 echo
 encode
