@@ -16,6 +16,7 @@ usage() {
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 BUILDER_DIR="$(dirname "$SCRIPT_DIR")"
+PATCHES_DIR="${BUILDER_DIR}/patches"
 cd "$BUILDER_DIR" || exit
 
 # build with psy and lto as default
@@ -195,9 +196,11 @@ COMP_FLAGS=""
 if [[ "$ARCH" == "x86_64" ]]
 then
   COMP_FLAGS+=" -march=native"
+  PATCH_SVT_PSY="true"
 elif [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]
 then
   COMP_FLAGS+=" -mcpu=native"
+  PATCH_SVT_PSY="patch -p1 -i ${PATCHES_DIR}/fix_neon_dotprod_implementation_of_sad_loop_kernel.patch"
 fi
 
 # compilation job count
@@ -237,7 +240,7 @@ if [[ "$(uname -r)" =~ "WSL" ]] ; then
 fi
 
 # clone ffmpeg
-git clone https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
+test -d "$FFMPEG_DIR" || git clone https://github.com/FFmpeg/FFmpeg "$FFMPEG_DIR"
 
 build_mpp() {
      # build mpp
@@ -346,11 +349,14 @@ build_svt_av1_psy() {
      fi
      cd "$SVT_PSY_DIR" || return 1
 
+     # disabling skipping build until patch is not needed
+     local FORCE_REBUILD=1
      check_for_rebuild && \
           cd "$CMAKE_BUILD_DIR" && \
           sudo make install && \
           set_commit_status && \
           return 0
+     ${PATCH_SVT_PSY} || return 1
 
      sudo rm -rf "$CMAKE_BUILD_DIR"
      mkdir "$CMAKE_BUILD_DIR"
