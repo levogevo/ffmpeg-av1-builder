@@ -105,14 +105,14 @@ encode() {
     echo -e '#!/usr/bin/env bash\n' > "$ENCODE_FILE"
     echo "export OUTPUT=\"$OUTPUT\"" >> "$ENCODE_FILE"
 
-    SVT_PARAMS="${GRAIN}sharpness=3:spy-rd=1:psy-rd=1:tune=3:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
+    SVT_PARAMS="${GRAIN}sharpness=3:spy-rd=1:psy-rd=1:tune=3:enable-overlays=1:scd=1:fast-decode=1:enable-variance-boost=1:enable-qm=1:qm-min=0:qm-max=15"
     echo "export SVT_PARAMS=\"$SVT_PARAMS\"" >> "$ENCODE_FILE"
 
     UNMAP=$(unmap_streams "$INPUT")
     echo "export UNMAP=\"$UNMAP\"" >> "$ENCODE_FILE"
 
-    #AUDIO_FORMAT=""
-    #echo "export AUDIO_FORMAT=\"$AUDIO_FORMAT\"" >> "$ENCODE_FILE"
+    # AUDIO_FORMAT='-af aformat=channel_layouts=7.1|5.1|stereo|mono'
+    # echo "export AUDIO_FORMAT='$AUDIO_FORMAT'" >> "$ENCODE_FILE"
     
     AUDIO_BITRATE=$(get_bitrate_audio "$INPUT")
     echo "export AUDIO_BITRATE=\"$AUDIO_BITRATE\"" >> "$ENCODE_FILE"
