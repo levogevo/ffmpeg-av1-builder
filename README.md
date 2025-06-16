@@ -12,7 +12,7 @@ With the scripts, you can:
 
 1. Install required dependencies using `./scripts/install_deps.sh`
 2. Build and install ffmpeg from source using `./scripts/build.sh`
-3. Install an encoding script using `./scripts/recc_encode_install.sh -I`
+3. Install an encoding script using `./scripts/recc_encode.sh -I`
 4. Install a film-grain estimation script using `./scripts/estimate_fg.sh -I`
 5. Benchmark the different encoders using `./scripts/benchmark.sh`
 
